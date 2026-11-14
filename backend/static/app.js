@@ -33,7 +33,13 @@ const state = {
     trafficGroup: null,
     rainSystem: null,
     dirLight: null,
+    hemiLight: null,
     flashLight: null,
+
+    // Environmental Atmospheric Weather & Lighting System
+    weatherMode: "auto", // "auto", "day", "night"
+    currentWeatherFactor: 0.5, // 0.0 (Clear Sun) to 1.0 (Severe Tempest)
+    targetWeatherFactor: 0.5,
 
     // Traffic Fleet
     vehicles: [],
@@ -175,10 +181,10 @@ function initThreeScene() {
     const width = container.clientWidth || window.innerWidth;
     const height = container.clientHeight || (window.innerHeight - 150);
 
-    // Scene with atmospheric fog
+    // Scene with dynamic atmospheric fog and sky
     state.scene = new THREE.Scene();
-    state.scene.background = new THREE.Color(0x060a14);
-    state.scene.fog = new THREE.FogExp2(0x060a14, 0.0014);
+    state.scene.background = new THREE.Color(0x38bdf8);
+    state.scene.fog = new THREE.FogExp2(0xcbe8fc, 0.00045);
 
     // Perspective Camera
     state.camera = new THREE.PerspectiveCamera(45, width / height, 1.0, 2500);
@@ -201,12 +207,12 @@ function initThreeScene() {
     state.controls.maxDistance = 850;
     state.controls.target.set(0, 15, 0);
 
-    // Ambient Lighting
-    const hemiLight = new THREE.HemisphereLight(0x7dd3fc, 0x0f172a, 0.6);
-    state.scene.add(hemiLight);
+    // Ambient Hemisphere Lighting
+    state.hemiLight = new THREE.HemisphereLight(0xe0f2fe, 0x475569, 0.75);
+    state.scene.add(state.hemiLight);
 
     // Directional Sunlight with Shadows
-    state.dirLight = new THREE.DirectionalLight(0xffedd5, 1.3);
+    state.dirLight = new THREE.DirectionalLight(0xfffaed, 1.75);
     state.dirLight.position.set(200, 350, 150);
     state.dirLight.castShadow = true;
     state.dirLight.shadow.mapSize.width = 2048;
@@ -223,6 +229,12 @@ function initThreeScene() {
     state.flashLight = new THREE.PointLight(0xdbeafe, 0, 1200);
     state.flashLight.position.set(0, 300, 0);
     state.scene.add(state.flashLight);
+
+    // Initialize atmospheric weather from current slider value
+    const initRain = parseFloat(document.getElementById("sliderRainfall")?.value || 0.0);
+    state.targetWeatherFactor = npClamp(initRain / 130.0, 0.0, 1.0);
+    state.currentWeatherFactor = state.targetWeatherFactor;
+    applyAtmosphereUpdate(1.0);
 
     // Window Resize Handler
     window.addEventListener("resize", onWindowResize);
@@ -669,7 +681,7 @@ function buildBuildings3D() {
         mesh.position.set(p3d.x, groundY + bh / 2.0, p3d.z);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
-        mesh.userData = { id: p.id, district: p.district, zoning: p.zoning, height: p.height_m };
+        mesh.userData = { id: p.id, district: p.district, zoning: p.zoning, height: p.height_m, baseEmissive: emissiveIntensity };
 
         state.buildingsGroup.add(mesh);
     });
@@ -1158,7 +1170,15 @@ function scrubToStep(stepIdx) {
     // 3. Update Facility Operational Status & Blackout FX
     update3DFacilitiesStatus(frame.surface_depth_grid, frame.snapshot);
 
-    // 4. Update KPI Telemetry Cards
+    // 4. Update Dynamic Atmospheric Weather & Sky based on current rainfall
+    if (state.weatherMode === "auto" && frame.snapshot) {
+        const rain = frame.snapshot.rainfall_rate_mm_hr !== undefined 
+            ? frame.snapshot.rainfall_rate_mm_hr 
+            : parseFloat(sliderRain.value);
+        state.targetWeatherFactor = npClamp(rain / 130.0, 0.0, 1.0);
+    }
+
+    // 5. Update KPI Telemetry Cards
     updateTelemetry(frame.snapshot);
 }
 
@@ -1330,6 +1350,119 @@ function tweenCamera(targetPos, targetLookAt) {
     state.controls.update();
 }
 
+function setWeatherMode(mode) {
+    state.weatherMode = mode;
+    document.querySelectorAll(".weather-hud .cam-btn").forEach(btn => btn.classList.remove("active"));
+    if (mode === "auto") {
+        document.getElementById("envAuto")?.classList.add("active");
+        const r = parseFloat(sliderRain.value);
+        state.targetWeatherFactor = npClamp(r / 130.0, 0.0, 1.0);
+    } else if (mode === "day") {
+        document.getElementById("envDay")?.classList.add("active");
+        state.targetWeatherFactor = 0.0;
+    } else if (mode === "night") {
+        document.getElementById("envNight")?.classList.add("active");
+        state.targetWeatherFactor = -1.0;
+    }
+}
+
+function applyAtmosphereUpdate(dt) {
+    if (!state.scene || !state.dirLight || !state.hemiLight) return;
+
+    // Smooth weather interpolation
+    const lerpSpeed = Math.min(1.0, dt * 3.5);
+    state.currentWeatherFactor = THREE.MathUtils.lerp(state.currentWeatherFactor, state.targetWeatherFactor, lerpSpeed);
+
+    const wf = state.currentWeatherFactor;
+
+    let skyCol, fogCol, fogDens, sunCol, sunInt, hemiSky, hemiGnd, hemiInt, rainOpac, emissiveScale;
+
+    if (state.weatherMode === "night" || wf < -0.5) {
+        // Midnight City Twin Atmosphere
+        skyCol = new THREE.Color(0x050a18);
+        fogCol = new THREE.Color(0x050a18);
+        fogDens = 0.0012;
+        sunCol = new THREE.Color(0x38bdf8); // Cool moonlight
+        sunInt = 0.35;
+        hemiSky = new THREE.Color(0x1e1b4b);
+        hemiGnd = new THREE.Color(0x020617);
+        hemiInt = 0.25;
+        rainOpac = (parseFloat(sliderRain.value) > 5) ? 0.45 : 0.0;
+        emissiveScale = 1.8;
+    } else {
+        // Daytime to Tempest Storm continuum: wf from 0.0 (Sunny Day) to 1.0 (Severe Deluge)
+        const clampedWf = npClamp(wf, 0.0, 1.0);
+
+        // Clear Sunny Day Colors
+        const daySky = new THREE.Color(0x38bdf8);      // Azure daylight blue
+        const dayFog = new THREE.Color(0xbfe3fc);      // Soft daylight horizon haze
+        const daySun = new THREE.Color(0xfffaed);      // Golden natural sunlight
+        const dayHemiSky = new THREE.Color(0xe0f2fe);
+        const dayHemiGnd = new THREE.Color(0x475569);
+
+        // Severe Storm Deluge Colors
+        const stormSky = new THREE.Color(0x060a14);    // Deep tempest dark navy
+        const stormFog = new THREE.Color(0x060a14);    // Dark rain fog
+        const stormSun = new THREE.Color(0x7dd3fc);    // Overcast diffused light
+        const stormHemiSky = new THREE.Color(0x1e293b);
+        const stormHemiGnd = new THREE.Color(0x020617);
+
+        skyCol = daySky.clone().lerp(stormSky, clampedWf);
+        fogCol = dayFog.clone().lerp(stormFog, clampedWf);
+        fogDens = THREE.MathUtils.lerp(0.00042, 0.0017, clampedWf);
+
+        sunCol = daySun.clone().lerp(stormSun, clampedWf);
+        sunInt = THREE.MathUtils.lerp(1.85, 0.50, clampedWf);
+
+        hemiSky = dayHemiSky.clone().lerp(stormHemiSky, clampedWf);
+        hemiGnd = dayHemiGnd.clone().lerp(stormHemiGnd, clampedWf);
+        hemiInt = THREE.MathUtils.lerp(0.85, 0.28, clampedWf);
+
+        rainOpac = (clampedWf < 0.04) ? 0.0 : THREE.MathUtils.lerp(0.12, 0.75, (clampedWf - 0.04) / 0.96);
+        emissiveScale = THREE.MathUtils.lerp(0.15, 1.4, clampedWf);
+    }
+
+    // Update Three.js scene background and fog
+    state.scene.background.copy(skyCol);
+    if (state.scene.fog) {
+        state.scene.fog.color.copy(fogCol);
+        state.scene.fog.density = fogDens;
+    }
+
+    // Directional Sunlight
+    state.dirLight.color.copy(sunCol);
+    state.dirLight.intensity = sunInt;
+
+    // Ambient Hemisphere Lighting
+    state.hemiLight.color.copy(hemiSky);
+    state.hemiLight.groundColor.copy(hemiGnd);
+    state.hemiLight.intensity = hemiInt;
+
+    // Rain Particle Streaks (opacity & visibility)
+    if (state.rainSystem) {
+        if (rainOpac <= 0.01) {
+            state.rainSystem.visible = false;
+        } else {
+            state.rainSystem.visible = true;
+            state.rainSystem.material.opacity = rainOpac;
+        }
+    }
+
+    // Building Window Emissive Glow (Daylight vs Storm)
+    if (state.buildingsGroup) {
+        const isGridBlackout = (state.currentFrame && state.currentFrame.snapshot && state.currentFrame.snapshot.operational_substations < 3);
+        state.buildingsGroup.children.forEach(bldg => {
+            if (bldg.material && bldg.userData && bldg.userData.baseEmissive !== undefined) {
+                if (isGridBlackout && bldg.position.z > 50) {
+                    bldg.material.emissiveIntensity = 0.02;
+                } else {
+                    bldg.material.emissiveIntensity = bldg.userData.baseEmissive * emissiveScale;
+                }
+            }
+        });
+    }
+}
+
 
 // =========================================================================
 // ANIMATION & RENDER LOOP
@@ -1341,7 +1474,10 @@ function animate() {
     const dt = state.clock.getDelta();
     const elapsedTime = state.clock.getElapsedTime();
 
-    // 1. Update Traffic Simulation (Cars moving along roads)
+    // 0. Update Dynamic Atmospheric Weather & Lighting (Smooth Day/Storm Transition)
+    applyAtmosphereUpdate(dt);
+
+    // 1. Update Traffic Simulation (Two-way right-hand lanes & anti-overlap car following)
     updateTraffic(dt);
 
     // 2. Animate Water Surface Ripples
@@ -1349,11 +1485,12 @@ function animate() {
         state.waterMesh.material.opacity = 0.80 + Math.sin(elapsedTime * 2.5) * 0.05;
     }
 
-    // 3. Animate Rain Particles
+    // 3. Animate Rain Particles (fall speed proportional to weather intensity)
     if (state.rainSystem && state.rainSystem.visible) {
+        const fallSpeed = 120 + state.currentWeatherFactor * 160;
         const pos = state.rainSystem.geometry.attributes.position;
         for (let i = 0; i < pos.count; i++) {
-            let py = pos.getY(i) - 180 * dt;
+            let py = pos.getY(i) - fallSpeed * dt;
             if (py < 0) py = 250;
             pos.setY(i, py);
         }
@@ -1370,11 +1507,10 @@ function animate() {
         state.controls.target.set(0, 15, 0);
     }
 
-    // 5. Random Storm Lightning Flashes during heavy rain
-    const rainIntensity = parseFloat(sliderRain.value);
-    if (rainIntensity > 100 && Math.random() < 0.008) {
-        state.flashLight.intensity = 4.0;
-        setTimeout(() => { if (state.flashLight) state.flashLight.intensity = 0.0; }, 80);
+    // 5. Random Storm Lightning Flashes (only in severe storms)
+    if (state.currentWeatherFactor > 0.65 && Math.random() < 0.009) {
+        state.flashLight.intensity = 4.5;
+        setTimeout(() => { if (state.flashLight) state.flashLight.intensity = 0.0; }, 75);
     }
 
     // 6. Flash Warning Strobe Beacons on Road Barricades
@@ -1466,8 +1602,22 @@ function setupEventListeners() {
     document.getElementById("camRiver").addEventListener("click", () => setCameraPreset("river"));
     document.getElementById("camDrone").addEventListener("click", () => setCameraPreset("drone"));
 
+    // Atmosphere & Environment Presets
+    const btnEnvAuto = document.getElementById("envAuto");
+    const btnEnvDay = document.getElementById("envDay");
+    const btnEnvNight = document.getElementById("envNight");
+    if (btnEnvAuto) btnEnvAuto.addEventListener("click", () => setWeatherMode("auto"));
+    if (btnEnvDay) btnEnvDay.addEventListener("click", () => setWeatherMode("day"));
+    if (btnEnvNight) btnEnvNight.addEventListener("click", () => setWeatherMode("night"));
+
     // Sliders
-    sliderRain.addEventListener("input", (e) => { valRain.innerText = `${e.target.value} mm/hr`; });
+    sliderRain.addEventListener("input", (e) => { 
+        valRain.innerText = `${e.target.value} mm/hr`; 
+        if (state.weatherMode === "auto") {
+            const r = parseFloat(e.target.value);
+            state.targetWeatherFactor = npClamp(r / 130.0, 0.0, 1.0);
+        }
+    });
     sliderDuration.addEventListener("input", (e) => { valDuration.innerText = `${parseFloat(e.target.value).toFixed(1)} hrs`; });
     sliderDrain.addEventListener("input", (e) => { valDrain.innerText = `${e.target.value}%`; });
     sliderPump1.addEventListener("input", (e) => { valPump1.innerText = `${e.target.value}%`; });
