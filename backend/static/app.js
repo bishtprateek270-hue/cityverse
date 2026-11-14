@@ -200,6 +200,28 @@ async function init() {
 // PROCEDURAL ARCHITECTURAL FACADE & ATMOSPHERIC TEXTURES
 // =========================================================================
 
+// =========================================================================
+// GEOMETRIC & DEBOUNCE UTILITIES
+// =========================================================================
+
+function distToSegment(p, a, b) {
+    const abx = b.x - a.x, abz = b.z - a.z;
+    const apx = p.x - a.x, apz = p.z - a.z;
+    const abLenSq = abx * abx + abz * abz;
+    if (abLenSq < 0.0001) return Math.hypot(apx, apz);
+    const t = Math.max(0.0, Math.min(1.0, (apx * abx + apz * abz) / abLenSq));
+    const projX = a.x + t * abx;
+    const projZ = a.z + t * abz;
+    return Math.hypot(p.x - projX, p.z - projZ);
+}
+
+function debounceAutoRollout(delay = 180) {
+    if (sliderDebounceTimer) clearTimeout(sliderDebounceTimer);
+    sliderDebounceTimer = setTimeout(() => {
+        runScenario(false, true);
+    }, delay);
+}
+
 function interpolateHexColor(hex1, hex2, t) {
     const r1 = parseInt(hex1.slice(1, 3), 16), g1 = parseInt(hex1.slice(3, 5), 16), b1 = parseInt(hex1.slice(5, 7), 16);
     const r2 = parseInt(hex2.slice(1, 3), 16), g2 = parseInt(hex2.slice(3, 5), 16), b2 = parseInt(hex2.slice(5, 7), 16);
@@ -1699,6 +1721,33 @@ function buildBuildings3D() {
         const bh = Math.max(4.5, (p.height_m || 30.0) * 0.45);
         const groundY = (p.ground_elev_m - state.terrain.min_elevation_m) * 0.55;
 
+        // Anti-Clipping Road Setback: Ensure building boundary never encroaches on any road corridor
+        if (state.roadGraph) {
+            const halfSize = Math.max(bw, bd) * 0.5 + 2.0;
+            for (const edge of Object.values(state.roadGraph)) {
+                const roadDist = distToSegment(p3d, edge.start, edge.end);
+                const reqClearance = halfSize + (edge.width * 0.5) + 2.5;
+                if (roadDist < reqClearance) {
+                    const dx = edge.end.x - edge.start.x;
+                    const dz = edge.end.z - edge.start.z;
+                    const len = Math.hypot(dx, dz);
+                    if (len > 0.001) {
+                        let nx = -dz / len;
+                        let nz = dx / len;
+                        const toBldgX = p3d.x - edge.start.x;
+                        const toBldgZ = p3d.z - edge.start.z;
+                        if (toBldgX * nx + toBldgZ * nz < 0) {
+                            nx = -nx;
+                            nz = -nz;
+                        }
+                        const pushDist = (reqClearance - roadDist) + 2.0;
+                        p3d.x += nx * pushDist;
+                        p3d.z += nz * pushDist;
+                    }
+                }
+            }
+        }
+
         const bldgGroup = new THREE.Group();
         bldgGroup.position.set(p3d.x, 0, p3d.z);
 
@@ -3088,36 +3137,34 @@ function updateTraffic(dt) {
             }
         } else {
             // Specialized Emergency Vehicles (Ambulances & Heavy Fire Engines)
-            if (water >= clearance) {
-                // Deep water exceeds vehicle clearance: execute tactical U-turn detour
+            const isRoadBlocked = edge.isClosed || edge.hasSandbag || (water >= 0.15);
+
+            if (isRoadBlocked) {
+                // Obey red/blocked roads: execute immediate tactical U-turn detour away from flood barrier
                 veh.currentSpeed = Math.max(0.0, veh.currentSpeed - 16.0 * dt);
                 veh.waitingTimer += dt;
 
-                if (veh.currentSpeed <= 0.3 || veh.waitingTimer > 0.4) {
+                if (veh.currentSpeed <= 0.4 || veh.waitingTimer > 0.3) {
                     const returnEdgeId = state.reciprocalEdges[veh.edgeId];
                     const returnEdge = returnEdgeId ? state.roadGraph[returnEdgeId] : null;
 
-                    if (returnEdge) {
+                    if (returnEdge && !returnEdge.isClosed && !returnEdge.hasSandbag && (returnEdge.waterDepth || 0.0) < 0.15) {
                         veh.edgeId = returnEdge.id;
                         veh.t = npClamp(1.0 - veh.t, 0.05, 0.95);
-                        veh.currentSpeed = veh.baseSpeed * 0.60;
+                        veh.currentSpeed = veh.baseSpeed * 0.70;
                         veh.isStalled = false;
                         veh.waitingTimer = 0;
                         edge = returnEdge;
                     } else {
+                        veh.currentSpeed = 0.0;
                         veh.isStalled = true;
                     }
                 } else {
                     veh.isStalled = true;
                 }
-            } else if (water >= 0.15) {
-                // Road barricaded to civilian cars, but emergency vehicle pushes through flood water!
-                veh.currentSpeed = Math.min(veh.baseSpeed * 0.65, veh.currentSpeed + 8.0 * dt);
-                veh.isStalled = false;
-                veh.waitingTimer = 0;
             } else if (water >= 0.05) {
-                // Shallow ponding: fast priority passage
-                veh.currentSpeed = Math.min(veh.baseSpeed * 0.82, veh.currentSpeed + 10.0 * dt);
+                // Shallow ponding: careful emergency transit
+                veh.currentSpeed = Math.min(veh.baseSpeed * 0.75, veh.currentSpeed + 10.0 * dt);
                 veh.isStalled = false;
                 veh.waitingTimer = 0;
             } else {
@@ -3171,11 +3218,13 @@ function updateTraffic(dt) {
                     }
                 }
             } else {
-                // Emergency Vehicles: Tactical Dynamic Dispatch Routing
+                // Emergency Vehicles: Tactical Dynamic Dispatch strictly on OPEN / UNBLOCKED Roads
                 const passableOutgoing = Object.values(state.roadGraph).filter(e => 
                     e.u === hitNode && 
                     e.id !== oppEdgeId && 
-                    (e.waterDepth || 0.0) < clearance
+                    !e.isClosed && 
+                    !e.hasSandbag && 
+                    (e.waterDepth || 0.0) < 0.15
                 );
 
                 // Update mission lifecycle
@@ -3192,16 +3241,13 @@ function updateTraffic(dt) {
                 let selectedEdge = null;
                 if (passableOutgoing.length > 0) {
                     if (veh.missionState === "responding") {
-                        // Priority 1: Seek active incident edges (standing water < clearance)
-                        const incidentEdges = passableOutgoing.filter(e => (e.waterDepth || 0.0) > 0.02);
-                        if (incidentEdges.length > 0) {
-                            selectedEdge = incidentEdges[Math.floor(Math.random() * incidentEdges.length)];
-                        } else {
-                            // Priority 2: Follow fastest arterial open edge
-                            selectedEdge = passableOutgoing[Math.floor(Math.random() * passableOutgoing.length)];
-                        }
+                        // Priority 1: Follow fastest arterial open roads
+                        const arterialEdges = passableOutgoing.filter(e => e.roadClass === "arterial");
+                        selectedEdge = (arterialEdges.length > 0)
+                            ? arterialEdges[Math.floor(Math.random() * arterialEdges.length)]
+                            : passableOutgoing[Math.floor(Math.random() * passableOutgoing.length)];
                     } else {
-                        // Returning to Level-1 Trauma Center / EMS Base
+                        // Returning to Level-1 Trauma Center / EMS Base along open dry roads
                         const homePos = (state.nodePositions && veh.homeHospitalNode) ? state.nodePositions[veh.homeHospitalNode] : null;
                         if (homePos) {
                             let bestDist = Infinity;
@@ -3232,12 +3278,13 @@ function updateTraffic(dt) {
                     edge = selectedEdge;
                 } else {
                     const returnEdgeId = state.reciprocalEdges[edge.id];
-                    if (returnEdgeId) {
-                        veh.edgeId = returnEdgeId;
+                    const returnEdge = returnEdgeId ? state.roadGraph[returnEdgeId] : null;
+                    if (returnEdge && !returnEdge.isClosed && !returnEdge.hasSandbag && (returnEdge.waterDepth || 0.0) < 0.15) {
+                        veh.edgeId = returnEdge.id;
                         veh.t = 0.05;
                         veh.currentSpeed = veh.baseSpeed * 0.65;
                         veh.isStalled = false;
-                        edge = state.roadGraph[returnEdgeId];
+                        edge = returnEdge;
                     } else {
                         veh.currentSpeed = 0.0;
                         veh.isStalled = true;
@@ -4102,23 +4149,27 @@ function setupEventListeners() {
     const container = document.getElementById("city3dViewport");
     let clickStartX = 0;
     let clickStartY = 0;
+    let isMouseDown = false;
+
     container.addEventListener("mousedown", (e) => {
         clickStartX = e.clientX;
         clickStartY = e.clientY;
-        state.isDragging = false;
+        isMouseDown = true;
     });
     container.addEventListener("mousemove", (e) => {
-        if (Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY) > 5) {
-            state.isDragging = true;
-        }
         handle3DMouseMove(e);
     });
     container.addEventListener("mouseup", (e) => {
-        if (!state.isDragging && Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY) <= 5) {
+        const moveDist = Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY);
+        if (isMouseDown && moveDist <= 14) {
             handle3DClick(e);
         }
+        isMouseDown = false;
     });
-    container.addEventListener("mouseleave", () => inspectorCard.classList.add("hidden"));
+    container.addEventListener("mouseleave", () => {
+        isMouseDown = false;
+        inspectorCard.classList.add("hidden");
+    });
 
     // Intervention Tool Buttons
     const btnSandbag = document.getElementById("btnToolSandbag");
@@ -4557,7 +4608,11 @@ function handle3DClick(e) {
 
     raycaster.setFromCamera(mouseVec, state.camera);
 
-    // 1. Check if user clicked an existing Sandbag Berm
+    // Get 3D hit point on terrain plane for proximity snapping
+    const terrainHits = state.terrainMesh ? raycaster.intersectObject(state.terrainMesh) : [];
+    const hitPt = terrainHits.length > 0 ? terrainHits[0].point : null;
+
+    // 1. Check if user clicked an existing Sandbag Berm (or clicked within 12m of one)
     if (state.sandbagsGroup && state.sandbagsGroup.children.length > 0) {
         const bermIntersects = raycaster.intersectObjects(state.sandbagsGroup.children, true);
         if (bermIntersects.length > 0) {
@@ -4568,6 +4623,13 @@ function handle3DClick(e) {
             if (hitBerm && hitBerm.userData && hitBerm.userData.isSandbagBerm) {
                 const sKey = hitBerm.userData.streetKey;
                 removeSandbagBerm(sKey);
+                return;
+            }
+        }
+        if (hitPt) {
+            const nearBerm = state.sandbagsGroup.children.find(b => b.position.distanceTo(hitPt) < 12.0);
+            if (nearBerm && nearBerm.userData && nearBerm.userData.streetKey) {
+                removeSandbagBerm(nearBerm.userData.streetKey);
                 return;
             }
         }
@@ -4586,9 +4648,17 @@ function handle3DClick(e) {
                 return;
             }
         }
+        if (hitPt) {
+            const nearFac = state.facilitiesGroup.children.find(f => f.userData && f.userData.category && f.position.distanceTo(hitPt) < 22.0);
+            if (nearFac) {
+                handleFacilityIntervention(nearFac);
+                return;
+            }
+        }
     }
 
-    // 3. Check if user clicked a Road to deploy sandbags
+    // 3. Check if user clicked a Road to deploy sandbags (direct road mesh OR nearest road to click point)
+    let targetStreetKey = null;
     if (state.roadLinesGroup && state.roadLinesGroup.children.length > 0) {
         const roadIntersects = raycaster.intersectObjects(state.roadLinesGroup.children, true);
         if (roadIntersects.length > 0) {
@@ -4597,10 +4667,25 @@ function handle3DClick(e) {
                 hitRoad = hitRoad.parent;
             }
             if (hitRoad && hitRoad.userData && hitRoad.userData.streetKey) {
-                handleRoadIntervention(hitRoad.userData.streetKey);
-                return;
+                targetStreetKey = hitRoad.userData.streetKey;
             }
         }
+    }
+
+    if (!targetStreetKey && hitPt && state.roadGraph) {
+        let bestDist = 18.0; // 18-meter proximity snap for easy road clicking
+        Object.values(state.roadGraph).forEach(edge => {
+            const d = distToSegment(hitPt, edge.start, edge.end);
+            if (d < bestDist) {
+                bestDist = d;
+                targetStreetKey = edge.streetKey;
+            }
+        });
+    }
+
+    if (targetStreetKey) {
+        handleRoadIntervention(targetStreetKey);
+        return;
     }
 }
 
