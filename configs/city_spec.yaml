@@ -1,0 +1,136 @@
+# MetroVerdia - CityVerse Synthetic City Specification
+city_name: "MetroVerdia"
+version: "1.0.0"
+
+spatial:
+  extent_x_m: 6000.0  # 6 km width
+  extent_y_m: 6000.0  # 6 km height
+  grid_resolution_m: 50.0 # 50m cell size
+  grid_width: 120    # 120 cells
+  grid_height: 120   # 120 cells
+  datum_elevation_m: 0.0
+
+topography:
+  elevation_min_m: 12.0
+  elevation_max_m: 68.0
+  river:
+    channel_width_m: 45.0
+    bank_height_m: 2.5
+    bed_slope: 0.0015
+    start_coord: [500.0, 5800.0]
+    mid_control: [3200.0, 3100.0]
+    end_coord: [5800.0, 400.0]
+    base_flow_depth_m: 1.2
+
+zones:
+  urban_core:
+    area_bbox: [2200, 1800, 4200, 3800]
+    impervious_fraction: 0.85
+    manning_n: 0.015
+    horton_f0_mm_hr: 10.0
+    horton_fc_mm_hr: 2.0
+    horton_decay_hr: 4.0
+    density_factor: 1.0
+  suburban_residential:
+    impervious_fraction: 0.45
+    manning_n: 0.035
+    horton_f0_mm_hr: 35.0
+    horton_fc_mm_hr: 5.0
+    horton_decay_hr: 2.5
+    density_factor: 0.5
+  greenbelt:
+    impervious_fraction: 0.10
+    manning_n: 0.060
+    horton_f0_mm_hr: 75.0
+    horton_fc_mm_hr: 12.0
+    horton_decay_hr: 1.8
+    density_factor: 0.05
+
+infrastructure:
+  hospitals:
+    - id: "HOSP-NORTH"
+      name: "St. Jude Northern Regional Trauma"
+      x: 1800.0
+      y: 4800.0
+      capacity_beds: 450
+      critical_level: 1
+    - id: "HOSP-CENTRAL"
+      name: "MetroVerdia Central General"
+      x: 4100.0
+      y: 2200.0
+      capacity_beds: 350
+      critical_level: 1
+
+  ems_stations:
+    - id: "EMS-1"
+      name: "Northwest Fire & Rescue"
+      x: 1200.0
+      y: 4900.0
+      ambulances: 6
+    - id: "EMS-2"
+      name: "Northeast EMS Base"
+      x: 4800.0
+      y: 5000.0
+      ambulances: 5
+    - id: "EMS-3"
+      name: "Downtown Station 12"
+      x: 3100.0
+      y: 2900.0
+      ambulances: 8
+    - id: "EMS-4"
+      name: "South River Rescue"
+      x: 2400.0
+      y: 1100.0
+      ambulances: 5
+
+  electrical_substations:
+    - id: "SUB-ALPHA"
+      name: "Highland Substation Alpha"
+      x: 1500.0
+      y: 5200.0
+      voltage_kv: 138
+      flood_vulnerability_threshold_m: 0.35
+    - id: "SUB-BETA"
+      name: "Midtown Grid Station Beta"
+      x: 3500.0
+      y: 3500.0
+      voltage_kv: 138
+      flood_vulnerability_threshold_m: 0.30
+    - id: "SUB-GAMMA"
+      name: "Alluvial Lowland Substation Gamma"
+      x: 4500.0
+      y: 1600.0
+      voltage_kv: 69
+      flood_vulnerability_threshold_m: 0.20 # Vulnerable in 25-50yr events
+
+  pumping_stations:
+    - id: "PUMP-1"
+      name: "South Basin Main Stormwater Lift"
+      x: 4900.0
+      y: 1400.0
+      capacity_m3_s: 15.0
+      powered_by: "SUB-GAMMA"
+    - id: "PUMP-2"
+      name: "Central Confluence Booster"
+      x: 3300.0
+      y: 2950.0
+      capacity_m3_s: 10.0
+      powered_by: "SUB-BETA"
+
+transportation:
+  road_classes:
+    highway:
+      lanes: 4
+      free_flow_speed_kmh: 90.0
+      capacity_veh_per_hr_lane: 2000
+    arterial:
+      lanes: 2
+      free_flow_speed_kmh: 55.0
+      capacity_veh_per_hr_lane: 1200
+    local:
+      lanes: 1
+      free_flow_speed_kmh: 35.0
+      capacity_veh_per_hr_lane: 600
+  flood_critical_depth_passenger_m: 0.15
+  flood_critical_depth_emergency_m: 0.30
+

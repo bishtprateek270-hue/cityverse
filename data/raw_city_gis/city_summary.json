@@ -1,0 +1,18 @@
+{
+  "city_name": "MetroVerdia",
+  "grid_dimensions": [
+    120,
+    120
+  ],
+  "total_road_nodes": 129,
+  "total_road_directed_edges": 464,
+  "bridge_count": 20,
+  "drainage_manholes": 128,
+  "drainage_outfalls": 3,
+  "drainage_conduits": 120,
+  "registered_facilities": 11,
+  "hospitals": 2,
+  "ems_stations": 4,
+  "substations": 3,
+  "pumping_stations": 2
+}

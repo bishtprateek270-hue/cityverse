@@ -1,0 +1,1596 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0000",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              622.0,
+              622.0
+            ],
+            [
+              1178.0,
+              622.0
+            ],
+            [
+              1178.0,
+              1178.0
+            ],
+            [
+              622.0,
+              1178.0
+            ],
+            [
+              622.0,
+              622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0001",
+        "zoning": "residential_medium",
+        "district": "West Riverfront Promenade",
+        "color": "#2dd4bf",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              622.0,
+              1222.0
+            ],
+            [
+              1178.0,
+              1222.0
+            ],
+            [
+              1178.0,
+              1778.0
+            ],
+            [
+              622.0,
+              1778.0
+            ],
+            [
+              622.0,
+              1222.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0002",
+        "zoning": "residential_medium",
+        "district": "West Riverfront Promenade",
+        "color": "#2dd4bf",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              622.0,
+              1822.0
+            ],
+            [
+              1178.0,
+              1822.0
+            ],
+            [
+              1178.0,
+              2378.0
+            ],
+            [
+              622.0,
+              2378.0
+            ],
+            [
+              622.0,
+              1822.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0003",
+        "zoning": "residential_medium",
+        "district": "West Riverfront Promenade",
+        "color": "#2dd4bf",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              622.0,
+              2422.0
+            ],
+            [
+              1178.0,
+              2422.0
+            ],
+            [
+              1178.0,
+              2978.0
+            ],
+            [
+              622.0,
+              2978.0
+            ],
+            [
+              622.0,
+              2422.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0004",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              622.0,
+              3022.0
+            ],
+            [
+              1178.0,
+              3022.0
+            ],
+            [
+              1178.0,
+              3578.0
+            ],
+            [
+              622.0,
+              3578.0
+            ],
+            [
+              622.0,
+              3022.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0005",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              622.0,
+              3622.0
+            ],
+            [
+              1178.0,
+              3622.0
+            ],
+            [
+              1178.0,
+              4178.0
+            ],
+            [
+              622.0,
+              4178.0
+            ],
+            [
+              622.0,
+              3622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0006",
+        "zoning": "residential_low",
+        "district": "Pine Heights Residential",
+        "color": "#34d399",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              622.0,
+              4222.0
+            ],
+            [
+              1178.0,
+              4222.0
+            ],
+            [
+              1178.0,
+              4778.0
+            ],
+            [
+              622.0,
+              4778.0
+            ],
+            [
+              622.0,
+              4222.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0007",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1222.0,
+              622.0
+            ],
+            [
+              1778.0,
+              622.0
+            ],
+            [
+              1778.0,
+              1178.0
+            ],
+            [
+              1222.0,
+              1178.0
+            ],
+            [
+              1222.0,
+              622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0008",
+        "zoning": "residential_medium",
+        "district": "West Riverfront Promenade",
+        "color": "#2dd4bf",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1222.0,
+              1222.0
+            ],
+            [
+              1778.0,
+              1222.0
+            ],
+            [
+              1778.0,
+              1778.0
+            ],
+            [
+              1222.0,
+              1778.0
+            ],
+            [
+              1222.0,
+              1222.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0009",
+        "zoning": "residential_medium",
+        "district": "West Riverfront Promenade",
+        "color": "#2dd4bf",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1222.0,
+              1822.0
+            ],
+            [
+              1778.0,
+              1822.0
+            ],
+            [
+              1778.0,
+              2378.0
+            ],
+            [
+              1222.0,
+              2378.0
+            ],
+            [
+              1222.0,
+              1822.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0010",
+        "zoning": "residential_medium",
+        "district": "West Riverfront Promenade",
+        "color": "#2dd4bf",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1222.0,
+              2422.0
+            ],
+            [
+              1778.0,
+              2422.0
+            ],
+            [
+              1778.0,
+              2978.0
+            ],
+            [
+              1222.0,
+              2978.0
+            ],
+            [
+              1222.0,
+              2422.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0011",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1222.0,
+              3022.0
+            ],
+            [
+              1778.0,
+              3022.0
+            ],
+            [
+              1778.0,
+              3578.0
+            ],
+            [
+              1222.0,
+              3578.0
+            ],
+            [
+              1222.0,
+              3022.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0012",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1222.0,
+              3622.0
+            ],
+            [
+              1778.0,
+              3622.0
+            ],
+            [
+              1778.0,
+              4178.0
+            ],
+            [
+              1222.0,
+              4178.0
+            ],
+            [
+              1222.0,
+              3622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0013",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1822.0,
+              622.0
+            ],
+            [
+              2378.0,
+              622.0
+            ],
+            [
+              2378.0,
+              1178.0
+            ],
+            [
+              1822.0,
+              1178.0
+            ],
+            [
+              1822.0,
+              622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0014",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1822.0,
+              1222.0
+            ],
+            [
+              2378.0,
+              1222.0
+            ],
+            [
+              2378.0,
+              1778.0
+            ],
+            [
+              1822.0,
+              1778.0
+            ],
+            [
+              1822.0,
+              1222.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0015",
+        "zoning": "commercial_medium",
+        "district": "Midtown Corporate Corridor",
+        "color": "#818cf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1822.0,
+              1822.0
+            ],
+            [
+              2378.0,
+              1822.0
+            ],
+            [
+              2378.0,
+              2378.0
+            ],
+            [
+              1822.0,
+              2378.0
+            ],
+            [
+              1822.0,
+              1822.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0016",
+        "zoning": "commercial_medium",
+        "district": "Midtown Corporate Corridor",
+        "color": "#818cf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1822.0,
+              2422.0
+            ],
+            [
+              2378.0,
+              2422.0
+            ],
+            [
+              2378.0,
+              2978.0
+            ],
+            [
+              1822.0,
+              2978.0
+            ],
+            [
+              1822.0,
+              2422.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0017",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1822.0,
+              3022.0
+            ],
+            [
+              2378.0,
+              3022.0
+            ],
+            [
+              2378.0,
+              3578.0
+            ],
+            [
+              1822.0,
+              3578.0
+            ],
+            [
+              1822.0,
+              3022.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0018",
+        "zoning": "residential_low",
+        "district": "Pine Heights Residential",
+        "color": "#34d399",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1822.0,
+              4222.0
+            ],
+            [
+              2378.0,
+              4222.0
+            ],
+            [
+              2378.0,
+              4778.0
+            ],
+            [
+              1822.0,
+              4778.0
+            ],
+            [
+              1822.0,
+              4222.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0019",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              2422.0,
+              622.0
+            ],
+            [
+              2978.0,
+              622.0
+            ],
+            [
+              2978.0,
+              1178.0
+            ],
+            [
+              2422.0,
+              1178.0
+            ],
+            [
+              2422.0,
+              622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0020",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              2422.0,
+              1222.0
+            ],
+            [
+              2978.0,
+              1222.0
+            ],
+            [
+              2978.0,
+              1778.0
+            ],
+            [
+              2422.0,
+              1778.0
+            ],
+            [
+              2422.0,
+              1222.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0021",
+        "zoning": "commercial_medium",
+        "district": "Midtown Corporate Corridor",
+        "color": "#818cf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              2422.0,
+              1822.0
+            ],
+            [
+              2978.0,
+              1822.0
+            ],
+            [
+              2978.0,
+              2378.0
+            ],
+            [
+              2422.0,
+              2378.0
+            ],
+            [
+              2422.0,
+              1822.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0022",
+        "zoning": "commercial_medium",
+        "district": "Midtown Corporate Corridor",
+        "color": "#818cf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              2422.0,
+              2422.0
+            ],
+            [
+              2978.0,
+              2422.0
+            ],
+            [
+              2978.0,
+              2978.0
+            ],
+            [
+              2422.0,
+              2978.0
+            ],
+            [
+              2422.0,
+              2422.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0023",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              2422.0,
+              3622.0
+            ],
+            [
+              2978.0,
+              3622.0
+            ],
+            [
+              2978.0,
+              4178.0
+            ],
+            [
+              2422.0,
+              4178.0
+            ],
+            [
+              2422.0,
+              3622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0024",
+        "zoning": "residential_low",
+        "district": "Pine Heights Residential",
+        "color": "#34d399",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              2422.0,
+              4222.0
+            ],
+            [
+              2978.0,
+              4222.0
+            ],
+            [
+              2978.0,
+              4778.0
+            ],
+            [
+              2422.0,
+              4778.0
+            ],
+            [
+              2422.0,
+              4222.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0025",
+        "zoning": "port_industrial",
+        "district": "South Confluence Port & Drainage Basin",
+        "color": "#f87171",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3022.0,
+              622.0
+            ],
+            [
+              3578.0,
+              622.0
+            ],
+            [
+              3578.0,
+              1178.0
+            ],
+            [
+              3022.0,
+              1178.0
+            ],
+            [
+              3022.0,
+              622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0026",
+        "zoning": "port_industrial",
+        "district": "South Confluence Port & Drainage Basin",
+        "color": "#f87171",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3022.0,
+              1222.0
+            ],
+            [
+              3578.0,
+              1222.0
+            ],
+            [
+              3578.0,
+              1778.0
+            ],
+            [
+              3022.0,
+              1778.0
+            ],
+            [
+              3022.0,
+              1222.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0027",
+        "zoning": "port_industrial",
+        "district": "South Confluence Port & Drainage Basin",
+        "color": "#f87171",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3022.0,
+              1822.0
+            ],
+            [
+              3578.0,
+              1822.0
+            ],
+            [
+              3578.0,
+              2378.0
+            ],
+            [
+              3022.0,
+              2378.0
+            ],
+            [
+              3022.0,
+              1822.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0028",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3022.0,
+              3022.0
+            ],
+            [
+              3578.0,
+              3022.0
+            ],
+            [
+              3578.0,
+              3578.0
+            ],
+            [
+              3022.0,
+              3578.0
+            ],
+            [
+              3022.0,
+              3022.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0029",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3022.0,
+              3622.0
+            ],
+            [
+              3578.0,
+              3622.0
+            ],
+            [
+              3578.0,
+              4178.0
+            ],
+            [
+              3022.0,
+              4178.0
+            ],
+            [
+              3022.0,
+              3622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0030",
+        "zoning": "residential_low",
+        "district": "Pine Heights Residential",
+        "color": "#34d399",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3022.0,
+              4222.0
+            ],
+            [
+              3578.0,
+              4222.0
+            ],
+            [
+              3578.0,
+              4778.0
+            ],
+            [
+              3022.0,
+              4778.0
+            ],
+            [
+              3022.0,
+              4222.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0031",
+        "zoning": "port_industrial",
+        "district": "South Confluence Port & Drainage Basin",
+        "color": "#f87171",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3622.0,
+              622.0
+            ],
+            [
+              4178.0,
+              622.0
+            ],
+            [
+              4178.0,
+              1178.0
+            ],
+            [
+              3622.0,
+              1178.0
+            ],
+            [
+              3622.0,
+              622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0032",
+        "zoning": "port_industrial",
+        "district": "South Confluence Port & Drainage Basin",
+        "color": "#f87171",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3622.0,
+              1222.0
+            ],
+            [
+              4178.0,
+              1222.0
+            ],
+            [
+              4178.0,
+              1778.0
+            ],
+            [
+              3622.0,
+              1778.0
+            ],
+            [
+              3622.0,
+              1222.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0033",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3622.0,
+              2422.0
+            ],
+            [
+              4178.0,
+              2422.0
+            ],
+            [
+              4178.0,
+              2978.0
+            ],
+            [
+              3622.0,
+              2978.0
+            ],
+            [
+              3622.0,
+              2422.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0034",
+        "zoning": "industrial_heavy",
+        "district": "Iron Basin Industrial Park",
+        "color": "#fbbf24",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3622.0,
+              3022.0
+            ],
+            [
+              4178.0,
+              3022.0
+            ],
+            [
+              4178.0,
+              3578.0
+            ],
+            [
+              3622.0,
+              3578.0
+            ],
+            [
+              3622.0,
+              3022.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0035",
+        "zoning": "industrial_heavy",
+        "district": "Iron Basin Industrial Park",
+        "color": "#fbbf24",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3622.0,
+              3622.0
+            ],
+            [
+              4178.0,
+              3622.0
+            ],
+            [
+              4178.0,
+              4178.0
+            ],
+            [
+              3622.0,
+              4178.0
+            ],
+            [
+              3622.0,
+              3622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0036",
+        "zoning": "industrial_heavy",
+        "district": "Iron Basin Industrial Park",
+        "color": "#fbbf24",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3622.0,
+              4222.0
+            ],
+            [
+              4178.0,
+              4222.0
+            ],
+            [
+              4178.0,
+              4778.0
+            ],
+            [
+              3622.0,
+              4778.0
+            ],
+            [
+              3622.0,
+              4222.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0037",
+        "zoning": "port_industrial",
+        "district": "South Confluence Port & Drainage Basin",
+        "color": "#f87171",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4222.0,
+              622.0
+            ],
+            [
+              4778.0,
+              622.0
+            ],
+            [
+              4778.0,
+              1178.0
+            ],
+            [
+              4222.0,
+              1178.0
+            ],
+            [
+              4222.0,
+              622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0038",
+        "zoning": "port_industrial",
+        "district": "South Confluence Port & Drainage Basin",
+        "color": "#f87171",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4222.0,
+              1822.0
+            ],
+            [
+              4778.0,
+              1822.0
+            ],
+            [
+              4778.0,
+              2378.0
+            ],
+            [
+              4222.0,
+              2378.0
+            ],
+            [
+              4222.0,
+              1822.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0039",
+        "zoning": "commercial_high",
+        "district": "Downtown Commercial Core",
+        "color": "#38bdf8",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4222.0,
+              2422.0
+            ],
+            [
+              4778.0,
+              2422.0
+            ],
+            [
+              4778.0,
+              2978.0
+            ],
+            [
+              4222.0,
+              2978.0
+            ],
+            [
+              4222.0,
+              2422.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0040",
+        "zoning": "industrial_heavy",
+        "district": "Iron Basin Industrial Park",
+        "color": "#fbbf24",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4222.0,
+              3022.0
+            ],
+            [
+              4778.0,
+              3022.0
+            ],
+            [
+              4778.0,
+              3578.0
+            ],
+            [
+              4222.0,
+              3578.0
+            ],
+            [
+              4222.0,
+              3022.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0041",
+        "zoning": "industrial_heavy",
+        "district": "Iron Basin Industrial Park",
+        "color": "#fbbf24",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4222.0,
+              3622.0
+            ],
+            [
+              4778.0,
+              3622.0
+            ],
+            [
+              4778.0,
+              4178.0
+            ],
+            [
+              4222.0,
+              4178.0
+            ],
+            [
+              4222.0,
+              3622.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLOCK-0042",
+        "zoning": "industrial_heavy",
+        "district": "Iron Basin Industrial Park",
+        "color": "#fbbf24",
+        "area_m2": 309136.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4222.0,
+              4222.0
+            ],
+            [
+              4778.0,
+              4222.0
+            ],
+            [
+              4778.0,
+              4778.0
+            ],
+            [
+              4222.0,
+              4778.0
+            ],
+            [
+              4222.0,
+              4222.0
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

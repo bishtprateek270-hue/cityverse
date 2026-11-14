@@ -1,0 +1,251 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "DIST-DOWNTOWN",
+        "name": "Downtown Verdia",
+        "district_type": "commercial_high_density",
+        "center": [
+          3200.0,
+          3600.0
+        ],
+        "color": "#38bdf8",
+        "description": "High-rise commercial, banking, and governmental towers."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              2400.0,
+              2800.0
+            ],
+            [
+              4200.0,
+              2800.0
+            ],
+            [
+              4200.0,
+              4400.0
+            ],
+            [
+              2400.0,
+              4400.0
+            ],
+            [
+              2400.0,
+              2800.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "DIST-MIDTOWN",
+        "name": "Midtown & Innovation Corridor",
+        "district_type": "commercial_mixed",
+        "center": [
+          2400.0,
+          2600.0
+        ],
+        "color": "#818cf8",
+        "description": "Mid-rise corporate plazas, university facilities, and tech hubs."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1800.0,
+              1800.0
+            ],
+            [
+              3000.0,
+              1800.0
+            ],
+            [
+              3000.0,
+              3200.0
+            ],
+            [
+              1800.0,
+              3200.0
+            ],
+            [
+              1800.0,
+              1800.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "DIST-RIVERFRONT",
+        "name": "West Riverfront Promenade",
+        "district_type": "residential_waterfront",
+        "center": [
+          1400.0,
+          2200.0
+        ],
+        "color": "#2dd4bf",
+        "description": "Waterfront residences, parks, marinas, and river boardwalks."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              600.0,
+              1400.0
+            ],
+            [
+              2000.0,
+              1400.0
+            ],
+            [
+              2000.0,
+              3000.0
+            ],
+            [
+              600.0,
+              3000.0
+            ],
+            [
+              600.0,
+              1400.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "DIST-PINE-HEIGHTS",
+        "name": "Pine Heights Residential",
+        "district_type": "residential_low_density",
+        "center": [
+          2200.0,
+          4800.0
+        ],
+        "color": "#34d399",
+        "description": "Elevated residential neighborhoods, schools, and civic green spaces."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              800.0,
+              4000.0
+            ],
+            [
+              3400.0,
+              4000.0
+            ],
+            [
+              3400.0,
+              5600.0
+            ],
+            [
+              800.0,
+              5600.0
+            ],
+            [
+              800.0,
+              4000.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "DIST-EAST-INDUSTRIAL",
+        "name": "Iron Basin Logistics Park",
+        "district_type": "industrial_heavy",
+        "center": [
+          4600.0,
+          3800.0
+        ],
+        "color": "#fbbf24",
+        "description": "Manufacturing plants, distribution warehouses, and rail yards."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3800.0,
+              2800.0
+            ],
+            [
+              5600.0,
+              2800.0
+            ],
+            [
+              5600.0,
+              5200.0
+            ],
+            [
+              3800.0,
+              5200.0
+            ],
+            [
+              3800.0,
+              2800.0
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "DIST-SOUTH-CONFLUENCE",
+        "name": "South Confluence & Harbor Basin",
+        "district_type": "port_industrial_lowland",
+        "center": [
+          4400.0,
+          1400.0
+        ],
+        "color": "#f87171",
+        "description": "Flood vulnerable port basins, pump stations, and drainage canals."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3200.0,
+              600.0
+            ],
+            [
+              5600.0,
+              600.0
+            ],
+            [
+              5600.0,
+              2400.0
+            ],
+            [
+              3200.0,
+              2400.0
+            ],
+            [
+              3200.0,
+              600.0
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

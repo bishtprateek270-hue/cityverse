@@ -1,0 +1,29 @@
+{
+  "splits": {
+    "train": {
+      "count": 6,
+      "files": [
+        "data\\trajectories\\train\\train_run_0000.npz",
+        "data\\trajectories\\train\\train_run_0001.npz",
+        "data\\trajectories\\train\\train_run_0002.npz",
+        "data\\trajectories\\train\\train_run_0003.npz",
+        "data\\trajectories\\train\\train_run_0004.npz",
+        "data\\trajectories\\train\\train_run_0005.npz"
+      ]
+    },
+    "val": {
+      "count": 2,
+      "files": [
+        "data\\trajectories\\val\\val_run_0000.npz",
+        "data\\trajectories\\val\\val_run_0001.npz"
+      ]
+    },
+    "test": {
+      "count": 2,
+      "files": [
+        "data\\trajectories\\test\\test_run_0000.npz",
+        "data\\trajectories\\test\\test_run_0001.npz"
+      ]
+    }
+  }
+}

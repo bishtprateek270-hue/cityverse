@@ -1,0 +1,3005 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            600.0,
+            600.0
+          ],
+          [
+            600.0,
+            1200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0000",
+        "from_node": "MH-INT-0000",
+        "to_node": "MH-INT-0001",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.001,
+        "capacity_m3_s": 1.8597217200748684
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            600.0,
+            1200.0
+          ],
+          [
+            600.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0001",
+        "from_node": "MH-INT-0001",
+        "to_node": "MH-INT-0002",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.0013155492146809896,
+        "capacity_m3_s": 2.1330523450446752
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            600.0,
+            1800.0
+          ],
+          [
+            1200.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0002",
+        "from_node": "MH-INT-0002",
+        "to_node": "MH-INT-0011",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.0021176592508951823,
+        "capacity_m3_s": 2.7063004091809386
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            600.0,
+            2400.0
+          ],
+          [
+            600.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0003",
+        "from_node": "MH-INT-0003",
+        "to_node": "MH-INT-0002",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.001,
+        "capacity_m3_s": 1.8597217200748684
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            600.0,
+            3000.0
+          ],
+          [
+            600.0,
+            2400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0004",
+        "from_node": "MH-INT-0004",
+        "to_node": "MH-INT-0003",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.00590487798055013,
+        "capacity_m3_s": 4.519115353838028
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            600.0,
+            3600.0
+          ],
+          [
+            600.0,
+            3000.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0005",
+        "from_node": "MH-INT-0005",
+        "to_node": "MH-INT-0004",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.001427014668782552,
+        "capacity_m3_s": 2.2215811511526695
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            600.0,
+            4200.0
+          ],
+          [
+            600.0,
+            3600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0006",
+        "from_node": "MH-INT-0006",
+        "to_node": "MH-INT-0005",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.010236778259277345,
+        "capacity_m3_s": 5.950173252279913
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            600.0,
+            4800.0
+          ],
+          [
+            600.0,
+            4200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0007",
+        "from_node": "MH-INT-0007",
+        "to_node": "MH-INT-0006",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.0015152676900227864,
+        "capacity_m3_s": 2.289246952740051
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1200.0,
+            600.0
+          ],
+          [
+            1800.0,
+            600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0008",
+        "from_node": "MH-INT-0009",
+        "to_node": "MH-INT-0018",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.005011224746704101,
+        "capacity_m3_s": 4.163129339245331
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1200.0,
+            1200.0
+          ],
+          [
+            1200.0,
+            600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0009",
+        "from_node": "MH-INT-0010",
+        "to_node": "MH-INT-0009",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.001,
+        "capacity_m3_s": 1.8597217200748684
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1200.0,
+            1800.0
+          ],
+          [
+            1200.0,
+            1200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0010",
+        "from_node": "MH-INT-0011",
+        "to_node": "MH-INT-0010",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.001,
+        "capacity_m3_s": 1.8597217200748684
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1200.0,
+            2400.0
+          ],
+          [
+            1200.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0011",
+        "from_node": "MH-INT-0012",
+        "to_node": "MH-INT-0011",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.0015553029378255207,
+        "capacity_m3_s": 2.3192921576392305
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1200.0,
+            3000.0
+          ],
+          [
+            1200.0,
+            2400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0012",
+        "from_node": "MH-INT-0013",
+        "to_node": "MH-INT-0012",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.0032317415873209633,
+        "capacity_m3_s": 3.343230165962082
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1200.0,
+            3600.0
+          ],
+          [
+            1200.0,
+            3000.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0013",
+        "from_node": "MH-INT-0014",
+        "to_node": "MH-INT-0013",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.001509844462076823,
+        "capacity_m3_s": 2.285146609069212
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1200.0,
+            4200.0
+          ],
+          [
+            1200.0,
+            3600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0014",
+        "from_node": "MH-INT-0015",
+        "to_node": "MH-INT-0014",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.008846975962320964,
+        "capacity_m3_s": 5.531531462727618
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1200.0,
+            4800.0
+          ],
+          [
+            1200.0,
+            4200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0015",
+        "from_node": "MH-INT-0016",
+        "to_node": "MH-INT-0015",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.006041278839111328,
+        "capacity_m3_s": 4.571012448001726
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1200.0,
+            5400.0
+          ],
+          [
+            600.0,
+            5400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0016",
+        "from_node": "MH-INT-0017",
+        "to_node": "MH-INT-0008",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.008373915354410807,
+        "capacity_m3_s": 5.381610309224586
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1800.0,
+            600.0
+          ],
+          [
+            2400.0,
+            600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0017",
+        "from_node": "MH-INT-0018",
+        "to_node": "MH-INT-0035",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.004430936177571614,
+        "capacity_m3_s": 3.9146749842190913
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1800.0,
+            1200.0
+          ],
+          [
+            1800.0,
+            600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0018",
+        "from_node": "MH-INT-0019",
+        "to_node": "MH-INT-0018",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.0017129739125569662,
+        "capacity_m3_s": 2.4340154904347546
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1800.0,
+            1800.0
+          ],
+          [
+            2100.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0019",
+        "from_node": "MH-INT-0020",
+        "to_node": "MH-INT-0027",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.003980509440104167,
+        "capacity_m3_s": 0.7023806948255603
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1800.0,
+            2400.0
+          ],
+          [
+            2100.0,
+            2400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0020",
+        "from_node": "MH-INT-0021",
+        "to_node": "MH-INT-0029",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0036406707763671875,
+        "capacity_m3_s": 0.671728757075631
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1800.0,
+            3000.0
+          ],
+          [
+            2100.0,
+            3000.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0021",
+        "from_node": "MH-INT-0022",
+        "to_node": "MH-INT-0031",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.003692169189453125,
+        "capacity_m3_s": 0.6764629795203784
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1800.0,
+            4200.0
+          ],
+          [
+            1800.0,
+            4400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0022",
+        "from_node": "MH-INT-0024",
+        "to_node": "OUTFALL-1",
+        "length_m": 200.0,
+        "diameter_m": 1.4,
+        "slope": 0.03203166961669922,
+        "capacity_m3_s": 10.525379207408125
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1800.0,
+            4800.0
+          ],
+          [
+            1800.0,
+            4400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0023",
+        "from_node": "MH-INT-0025",
+        "to_node": "OUTFALL-1",
+        "length_m": 400.0,
+        "diameter_m": 1.4,
+        "slope": 0.0327399730682373,
+        "capacity_m3_s": 10.641114645508818
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2100.0,
+            1800.0
+          ],
+          [
+            2400.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0024",
+        "from_node": "MH-INT-0027",
+        "to_node": "MH-INT-0037",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.006692835489908854,
+        "capacity_m3_s": 0.9107691515406147
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2100.0,
+            2100.0
+          ],
+          [
+            2100.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0025",
+        "from_node": "MH-INT-0028",
+        "to_node": "MH-INT-0027",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.004006754557291666,
+        "capacity_m3_s": 0.7046924312836431
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2100.0,
+            2400.0
+          ],
+          [
+            2100.0,
+            2100.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0026",
+        "from_node": "MH-INT-0029",
+        "to_node": "MH-INT-0028",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0024947230021158855,
+        "capacity_m3_s": 0.5560507142172421
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2100.0,
+            2700.0
+          ],
+          [
+            2100.0,
+            2400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0027",
+        "from_node": "MH-INT-0030",
+        "to_node": "MH-INT-0029",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.001,
+        "capacity_m3_s": 0.35204909904348614
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2100.0,
+            3000.0
+          ],
+          [
+            2400.0,
+            3000.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0028",
+        "from_node": "MH-INT-0031",
+        "to_node": "MH-INT-0041",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0038381703694661457,
+        "capacity_m3_s": 0.6897081555692685
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2100.0,
+            3300.0
+          ],
+          [
+            2100.0,
+            3000.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0029",
+        "from_node": "MH-INT-0032",
+        "to_node": "MH-INT-0031",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.005429407755533854,
+        "capacity_m3_s": 0.8203127592903711
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2100.0,
+            3600.0
+          ],
+          [
+            1800.0,
+            3600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0030",
+        "from_node": "MH-INT-0033",
+        "to_node": "MH-INT-0023",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0018174997965494791,
+        "capacity_m3_s": 0.47461386660550875
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2100.0,
+            3900.0
+          ],
+          [
+            2100.0,
+            3600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0031",
+        "from_node": "MH-INT-0034",
+        "to_node": "MH-INT-0033",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.001,
+        "capacity_m3_s": 0.35204909904348614
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2400.0,
+            600.0
+          ],
+          [
+            3000.0,
+            600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0032",
+        "from_node": "MH-INT-0035",
+        "to_node": "MH-INT-0056",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.004076976776123047,
+        "capacity_m3_s": 3.7550617409902722
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2400.0,
+            1200.0
+          ],
+          [
+            2400.0,
+            600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0033",
+        "from_node": "MH-INT-0036",
+        "to_node": "MH-INT-0035",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.0015465609232584636,
+        "capacity_m3_s": 2.3127648579046465
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2400.0,
+            1800.0
+          ],
+          [
+            2700.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0034",
+        "from_node": "MH-INT-0037",
+        "to_node": "MH-INT-0048",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.008183879852294922,
+        "capacity_m3_s": 1.0071238010797774
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2400.0,
+            2100.0
+          ],
+          [
+            2400.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0035",
+        "from_node": "MH-INT-0038",
+        "to_node": "MH-INT-0037",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0032890574137369793,
+        "capacity_m3_s": 0.6384677488957701
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2400.0,
+            2400.0
+          ],
+          [
+            2400.0,
+            2100.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0036",
+        "from_node": "MH-INT-0039",
+        "to_node": "MH-INT-0038",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0025499852498372397,
+        "capacity_m3_s": 0.562175702637654
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2400.0,
+            2700.0
+          ],
+          [
+            2400.0,
+            2400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0037",
+        "from_node": "MH-INT-0040",
+        "to_node": "MH-INT-0039",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0013354110717773437,
+        "capacity_m3_s": 0.406827894951688
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2400.0,
+            3000.0
+          ],
+          [
+            2400.0,
+            2700.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0038",
+        "from_node": "MH-INT-0041",
+        "to_node": "MH-INT-0040",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.001,
+        "capacity_m3_s": 0.35204909904348614
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2400.0,
+            3300.0
+          ],
+          [
+            2100.0,
+            3300.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0039",
+        "from_node": "MH-INT-0042",
+        "to_node": "MH-INT-0032",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.004807395935058594,
+        "capacity_m3_s": 0.7718949207375213
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2400.0,
+            3600.0
+          ],
+          [
+            2100.0,
+            3600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0040",
+        "from_node": "MH-INT-0043",
+        "to_node": "MH-INT-0033",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.006917673746744792,
+        "capacity_m3_s": 0.925940915508517
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2400.0,
+            4200.0
+          ],
+          [
+            2400.0,
+            3900.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0041",
+        "from_node": "MH-INT-0045",
+        "to_node": "MH-INT-0044",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.050857556660970055,
+        "capacity_m3_s": 2.510619993452569
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2400.0,
+            4800.0
+          ],
+          [
+            2400.0,
+            4200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0042",
+        "from_node": "MH-INT-0046",
+        "to_node": "MH-INT-0045",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.005637257893880208,
+        "capacity_m3_s": 4.415520597777152
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2400.0,
+            5400.0
+          ],
+          [
+            2400.0,
+            4800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0043",
+        "from_node": "MH-INT-0047",
+        "to_node": "MH-INT-0046",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.008041547139485678,
+        "capacity_m3_s": 5.273728518446335
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2700.0,
+            1800.0
+          ],
+          [
+            3000.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0044",
+        "from_node": "MH-INT-0048",
+        "to_node": "MH-INT-0058",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.007702566782633463,
+        "capacity_m3_s": 0.9770594137624153
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2700.0,
+            2100.0
+          ],
+          [
+            2700.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0045",
+        "from_node": "MH-INT-0049",
+        "to_node": "MH-INT-0048",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.002060082753499349,
+        "capacity_m3_s": 0.5052956626700037
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2700.0,
+            2400.0
+          ],
+          [
+            2700.0,
+            2100.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0046",
+        "from_node": "MH-INT-0050",
+        "to_node": "MH-INT-0049",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0025669097900390624,
+        "capacity_m3_s": 0.5640382291255945
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2700.0,
+            2700.0
+          ],
+          [
+            2700.0,
+            2400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0047",
+        "from_node": "MH-INT-0051",
+        "to_node": "MH-INT-0050",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0031572723388671874,
+        "capacity_m3_s": 0.6255460118159168
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2700.0,
+            3000.0
+          ],
+          [
+            2700.0,
+            2700.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0048",
+        "from_node": "MH-INT-0052",
+        "to_node": "MH-INT-0051",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0037384923299153645,
+        "capacity_m3_s": 0.6806933129994023
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2700.0,
+            3300.0
+          ],
+          [
+            2400.0,
+            3300.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0049",
+        "from_node": "MH-INT-0053",
+        "to_node": "MH-INT-0042",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.004867324829101563,
+        "capacity_m3_s": 0.7766912320723878
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2700.0,
+            3600.0
+          ],
+          [
+            2400.0,
+            3600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0050",
+        "from_node": "MH-INT-0054",
+        "to_node": "MH-INT-0043",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.008630625406901042,
+        "capacity_m3_s": 1.034247240779969
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2700.0,
+            3900.0
+          ],
+          [
+            2400.0,
+            3900.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0051",
+        "from_node": "MH-INT-0055",
+        "to_node": "MH-INT-0044",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.05903260548909505,
+        "capacity_m3_s": 2.704887538833056
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            600.0
+          ],
+          [
+            3600.0,
+            600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0052",
+        "from_node": "MH-INT-0056",
+        "to_node": "MH-INT-0077",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.004506018956502279,
+        "capacity_m3_s": 3.947702989598089
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            1200.0
+          ],
+          [
+            3000.0,
+            600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0053",
+        "from_node": "MH-INT-0057",
+        "to_node": "MH-INT-0056",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.001,
+        "capacity_m3_s": 1.8597217200748684
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            1800.0
+          ],
+          [
+            3300.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0054",
+        "from_node": "MH-INT-0058",
+        "to_node": "MH-INT-0069",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.005434068044026693,
+        "capacity_m3_s": 0.8206647382076871
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            2100.0
+          ],
+          [
+            3000.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0055",
+        "from_node": "MH-INT-0059",
+        "to_node": "MH-INT-0058",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.001,
+        "capacity_m3_s": 0.35204909904348614
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            2400.0
+          ],
+          [
+            3000.0,
+            2100.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0056",
+        "from_node": "MH-INT-0060",
+        "to_node": "MH-INT-0059",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.002612876892089844,
+        "capacity_m3_s": 0.5690660952163052
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            2700.0
+          ],
+          [
+            3000.0,
+            2400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0057",
+        "from_node": "MH-INT-0061",
+        "to_node": "MH-INT-0060",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.004830366770426433,
+        "capacity_m3_s": 0.7737368681307571
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            3000.0
+          ],
+          [
+            3000.0,
+            2700.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0058",
+        "from_node": "MH-INT-0062",
+        "to_node": "MH-INT-0061",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.007119331359863281,
+        "capacity_m3_s": 0.9393400528225377
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            3300.0
+          ],
+          [
+            2700.0,
+            3300.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0059",
+        "from_node": "MH-INT-0063",
+        "to_node": "MH-INT-0053",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.002317085266113281,
+        "capacity_m3_s": 0.5358882627322463
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            3600.0
+          ],
+          [
+            2700.0,
+            3600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0060",
+        "from_node": "MH-INT-0064",
+        "to_node": "MH-INT-0054",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.005431467692057291,
+        "capacity_m3_s": 0.8204683593154284
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            3900.0
+          ],
+          [
+            2700.0,
+            3900.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0061",
+        "from_node": "MH-INT-0065",
+        "to_node": "MH-INT-0055",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.007472394307454427,
+        "capacity_m3_s": 0.9623501706881127
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            4200.0
+          ],
+          [
+            3000.0,
+            3900.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0062",
+        "from_node": "MH-INT-0066",
+        "to_node": "MH-INT-0065",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.002381248474121094,
+        "capacity_m3_s": 0.5432573296898727
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            4800.0
+          ],
+          [
+            3000.0,
+            5400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0063",
+        "from_node": "MH-INT-0067",
+        "to_node": "MH-INT-0068",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.011657498677571614,
+        "capacity_m3_s": 6.349662626442752
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3000.0,
+            5400.0
+          ],
+          [
+            3600.0,
+            5400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0064",
+        "from_node": "MH-INT-0068",
+        "to_node": "MH-INT-0089",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.008300584157307942,
+        "capacity_m3_s": 5.357994850476124
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3300.0,
+            1800.0
+          ],
+          [
+            3600.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0065",
+        "from_node": "MH-INT-0069",
+        "to_node": "MH-INT-0079",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.002408409118652344,
+        "capacity_m3_s": 0.5463467558745647
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3300.0,
+            2100.0
+          ],
+          [
+            3300.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0066",
+        "from_node": "MH-INT-0070",
+        "to_node": "MH-INT-0069",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.001,
+        "capacity_m3_s": 0.35204909904348614
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3300.0,
+            2400.0
+          ],
+          [
+            3300.0,
+            2100.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0067",
+        "from_node": "MH-INT-0071",
+        "to_node": "MH-INT-0070",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.002748552958170573,
+        "capacity_m3_s": 0.583653765588199
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3300.0,
+            2700.0
+          ],
+          [
+            3400.0,
+            2700.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0068",
+        "from_node": "MH-INT-0072",
+        "to_node": "OUTFALL-2",
+        "length_m": 100.0,
+        "diameter_m": 1.4,
+        "slope": 0.09669309616088867,
+        "capacity_m3_s": 18.28713608373853
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3300.0,
+            3000.0
+          ],
+          [
+            3300.0,
+            2700.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0069",
+        "from_node": "MH-INT-0073",
+        "to_node": "MH-INT-0072",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.008622258504231772,
+        "capacity_m3_s": 1.0337457971495727
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3300.0,
+            3300.0
+          ],
+          [
+            3300.0,
+            3000.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0070",
+        "from_node": "MH-INT-0074",
+        "to_node": "MH-INT-0073",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.029760754903157553,
+        "capacity_m3_s": 1.9205481898102377
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3300.0,
+            3600.0
+          ],
+          [
+            3300.0,
+            3300.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0071",
+        "from_node": "MH-INT-0075",
+        "to_node": "MH-INT-0074",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.009163004557291667,
+        "capacity_m3_s": 1.0656686467502745
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3300.0,
+            3900.0
+          ],
+          [
+            3300.0,
+            3600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0072",
+        "from_node": "MH-INT-0076",
+        "to_node": "MH-INT-0075",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.006451594034830729,
+        "capacity_m3_s": 0.8942042981781414
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3600.0,
+            600.0
+          ],
+          [
+            4200.0,
+            600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0073",
+        "from_node": "MH-INT-0077",
+        "to_node": "MH-INT-0098",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.004918556213378906,
+        "capacity_m3_s": 4.124457026179974
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3600.0,
+            1200.0
+          ],
+          [
+            3600.0,
+            600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0074",
+        "from_node": "MH-INT-0078",
+        "to_node": "MH-INT-0077",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.001,
+        "capacity_m3_s": 1.8597217200748684
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3600.0,
+            1800.0
+          ],
+          [
+            3900.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0075",
+        "from_node": "MH-INT-0079",
+        "to_node": "MH-INT-0090",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.001,
+        "capacity_m3_s": 0.35204909904348614
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3600.0,
+            2100.0
+          ],
+          [
+            3600.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0076",
+        "from_node": "MH-INT-0080",
+        "to_node": "MH-INT-0079",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.001329663594563802,
+        "capacity_m3_s": 0.4059514774139557
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3600.0,
+            2400.0
+          ],
+          [
+            3600.0,
+            2100.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0077",
+        "from_node": "MH-INT-0081",
+        "to_node": "MH-INT-0080",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0029989115397135416,
+        "capacity_m3_s": 0.6096562984195382
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3600.0,
+            2700.0
+          ],
+          [
+            3400.0,
+            2700.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0078",
+        "from_node": "MH-INT-0082",
+        "to_node": "OUTFALL-2",
+        "length_m": 200.0,
+        "diameter_m": 1.4,
+        "slope": 0.045571298599243165,
+        "capacity_m3_s": 12.554333622078003
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3600.0,
+            3000.0
+          ],
+          [
+            3600.0,
+            2700.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0079",
+        "from_node": "MH-INT-0083",
+        "to_node": "MH-INT-0082",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.007608655293782552,
+        "capacity_m3_s": 0.9710848791747958
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3600.0,
+            3300.0
+          ],
+          [
+            3600.0,
+            3000.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0080",
+        "from_node": "MH-INT-0084",
+        "to_node": "MH-INT-0083",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.02493353525797526,
+        "capacity_m3_s": 1.7579040526931768
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3600.0,
+            3600.0
+          ],
+          [
+            3600.0,
+            3300.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0081",
+        "from_node": "MH-INT-0085",
+        "to_node": "MH-INT-0084",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.006165313720703125,
+        "capacity_m3_s": 0.8741396654204532
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3600.0,
+            3900.0
+          ],
+          [
+            3600.0,
+            3600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0082",
+        "from_node": "MH-INT-0086",
+        "to_node": "MH-INT-0085",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0041402943929036455,
+        "capacity_m3_s": 0.7163394158661767
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3600.0,
+            4200.0
+          ],
+          [
+            3600.0,
+            3900.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0083",
+        "from_node": "MH-INT-0087",
+        "to_node": "MH-INT-0086",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.001,
+        "capacity_m3_s": 0.35204909904348614
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3600.0,
+            4800.0
+          ],
+          [
+            3600.0,
+            5400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0084",
+        "from_node": "MH-INT-0088",
+        "to_node": "MH-INT-0089",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.010970230102539063,
+        "capacity_m3_s": 6.159647109662734
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3900.0,
+            1800.0
+          ],
+          [
+            3900.0,
+            2100.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0085",
+        "from_node": "MH-INT-0090",
+        "to_node": "MH-INT-0091",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.02988491376241048,
+        "capacity_m3_s": 1.924550186568475
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3900.0,
+            2100.0
+          ],
+          [
+            4200.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0086",
+        "from_node": "MH-INT-0091",
+        "to_node": "MH-INT-0100",
+        "length_m": 424.26406871192853,
+        "diameter_m": 1.4,
+        "slope": 0.005125571532434527,
+        "capacity_m3_s": 4.210358853127549
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3900.0,
+            2400.0
+          ],
+          [
+            3600.0,
+            2400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0087",
+        "from_node": "MH-INT-0092",
+        "to_node": "MH-INT-0081",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0017899004618326822,
+        "capacity_m3_s": 0.4709964971715702
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3900.0,
+            2700.0
+          ],
+          [
+            3600.0,
+            2700.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0088",
+        "from_node": "MH-INT-0093",
+        "to_node": "MH-INT-0082",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.001,
+        "capacity_m3_s": 0.35204909904348614
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3900.0,
+            3000.0
+          ],
+          [
+            3900.0,
+            2700.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0089",
+        "from_node": "MH-INT-0094",
+        "to_node": "MH-INT-0093",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.004648545583089193,
+        "capacity_m3_s": 0.7590349685549315
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3900.0,
+            3300.0
+          ],
+          [
+            3900.0,
+            3000.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0090",
+        "from_node": "MH-INT-0095",
+        "to_node": "MH-INT-0094",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.015510692596435546,
+        "capacity_m3_s": 1.3864966755172954
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3900.0,
+            3600.0
+          ],
+          [
+            3900.0,
+            3300.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0091",
+        "from_node": "MH-INT-0096",
+        "to_node": "MH-INT-0095",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.001,
+        "capacity_m3_s": 0.35204909904348614
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3900.0,
+            3900.0
+          ],
+          [
+            3900.0,
+            3600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0092",
+        "from_node": "MH-INT-0097",
+        "to_node": "MH-INT-0096",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.001,
+        "capacity_m3_s": 0.35204909904348614
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4200.0,
+            600.0
+          ],
+          [
+            4800.0,
+            600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0093",
+        "from_node": "MH-INT-0098",
+        "to_node": "MH-INT-0111",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.004450111389160156,
+        "capacity_m3_s": 3.9231363658892873
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4200.0,
+            1200.0
+          ],
+          [
+            4200.0,
+            600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0094",
+        "from_node": "MH-INT-0099",
+        "to_node": "MH-INT-0098",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.0024475797017415365,
+        "capacity_m3_s": 2.909486756791171
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4200.0,
+            2100.0
+          ],
+          [
+            3900.0,
+            2100.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0095",
+        "from_node": "MH-INT-0101",
+        "to_node": "MH-INT-0091",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.03503148078918457,
+        "capacity_m3_s": 2.083687013143272
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4200.0,
+            2400.0
+          ],
+          [
+            3900.0,
+            2400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0096",
+        "from_node": "MH-INT-0102",
+        "to_node": "MH-INT-0092",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0027375094095865886,
+        "capacity_m3_s": 0.5824800395606964
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4200.0,
+            2700.0
+          ],
+          [
+            3900.0,
+            2700.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0097",
+        "from_node": "MH-INT-0103",
+        "to_node": "MH-INT-0093",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0012682723999023439,
+        "capacity_m3_s": 0.3964692488100333
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4200.0,
+            3000.0
+          ],
+          [
+            4200.0,
+            2700.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0098",
+        "from_node": "MH-INT-0104",
+        "to_node": "MH-INT-0103",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0012458038330078124,
+        "capacity_m3_s": 0.3929416537388039
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4200.0,
+            3300.0
+          ],
+          [
+            4200.0,
+            3000.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0099",
+        "from_node": "MH-INT-0105",
+        "to_node": "MH-INT-0104",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.004212125142415365,
+        "capacity_m3_s": 0.7225266493121266
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4200.0,
+            3600.0
+          ],
+          [
+            4200.0,
+            3900.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0100",
+        "from_node": "MH-INT-0106",
+        "to_node": "MH-INT-0107",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.003727601369222005,
+        "capacity_m3_s": 0.6797010933403942
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4200.0,
+            3900.0
+          ],
+          [
+            4200.0,
+            4200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0101",
+        "from_node": "MH-INT-0107",
+        "to_node": "MH-INT-0108",
+        "length_m": 300.0,
+        "diameter_m": 0.75,
+        "slope": 0.0013110860188802083,
+        "capacity_m3_s": 0.40310559892525166
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4200.0,
+            4200.0
+          ],
+          [
+            4800.0,
+            4200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0102",
+        "from_node": "MH-INT-0108",
+        "to_node": "MH-INT-0117",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.010530077616373697,
+        "capacity_m3_s": 6.034812058945068
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4200.0,
+            4800.0
+          ],
+          [
+            4200.0,
+            4200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0103",
+        "from_node": "MH-INT-0109",
+        "to_node": "MH-INT-0108",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.004025869369506836,
+        "capacity_m3_s": 3.73145151344843
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4200.0,
+            5400.0
+          ],
+          [
+            3600.0,
+            5400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0104",
+        "from_node": "MH-INT-0110",
+        "to_node": "MH-INT-0089",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.00792767842610677,
+        "capacity_m3_s": 5.236257265804757
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4800.0,
+            600.0
+          ],
+          [
+            4800.0,
+            1200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0105",
+        "from_node": "MH-INT-0111",
+        "to_node": "MH-INT-0112",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.008679474194844564,
+        "capacity_m3_s": 5.478916370365945
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4800.0,
+            1800.0
+          ],
+          [
+            4200.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0106",
+        "from_node": "MH-INT-0113",
+        "to_node": "MH-INT-0100",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.017274370193481447,
+        "capacity_m3_s": 7.729458584418353
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4800.0,
+            2400.0
+          ],
+          [
+            4800.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0107",
+        "from_node": "MH-INT-0114",
+        "to_node": "MH-INT-0113",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.005057182312011719,
+        "capacity_m3_s": 4.182175643902358
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4800.0,
+            3000.0
+          ],
+          [
+            4800.0,
+            2400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0108",
+        "from_node": "MH-INT-0115",
+        "to_node": "MH-INT-0114",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.001,
+        "capacity_m3_s": 1.8597217200748684
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4800.0,
+            3600.0
+          ],
+          [
+            4800.0,
+            4200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0109",
+        "from_node": "MH-INT-0116",
+        "to_node": "MH-INT-0117",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.0019129276275634765,
+        "capacity_m3_s": 2.5721555752417484
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4800.0,
+            4800.0
+          ],
+          [
+            4800.0,
+            4200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0110",
+        "from_node": "MH-INT-0118",
+        "to_node": "MH-INT-0117",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.009967066446940105,
+        "capacity_m3_s": 5.871264423556782
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4800.0,
+            5400.0
+          ],
+          [
+            4200.0,
+            5400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0111",
+        "from_node": "MH-INT-0119",
+        "to_node": "MH-INT-0110",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.005033715565999349,
+        "capacity_m3_s": 4.172461126593624
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            5400.0,
+            1200.0
+          ],
+          [
+            4800.0,
+            1200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0112",
+        "from_node": "MH-INT-0121",
+        "to_node": "MH-INT-0112",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.00892071564992269,
+        "capacity_m3_s": 5.5545363277829765
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            5400.0,
+            1800.0
+          ],
+          [
+            5400.0,
+            1200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0113",
+        "from_node": "MH-INT-0122",
+        "to_node": "MH-INT-0121",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.003747571309407552,
+        "capacity_m3_s": 3.6001692323369126
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            5400.0,
+            2400.0
+          ],
+          [
+            5400.0,
+            1800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0114",
+        "from_node": "MH-INT-0123",
+        "to_node": "MH-INT-0122",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.004208367665608724,
+        "capacity_m3_s": 3.815090116113378
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            5400.0,
+            3000.0
+          ],
+          [
+            5400.0,
+            2400.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0115",
+        "from_node": "MH-INT-0124",
+        "to_node": "MH-INT-0123",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.005344168345133463,
+        "capacity_m3_s": 4.299203755411166
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            5400.0,
+            3600.0
+          ],
+          [
+            4800.0,
+            3600.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0116",
+        "from_node": "MH-INT-0125",
+        "to_node": "MH-INT-0116",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.0040959898630778,
+        "capacity_m3_s": 3.7638074702855335
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            5400.0,
+            4200.0
+          ],
+          [
+            4800.0,
+            4200.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0117",
+        "from_node": "MH-INT-0126",
+        "to_node": "MH-INT-0117",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.012083587646484375,
+        "capacity_m3_s": 6.464663317731788
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            5400.0,
+            4800.0
+          ],
+          [
+            4800.0,
+            4800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0118",
+        "from_node": "MH-INT-0127",
+        "to_node": "MH-INT-0118",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.008286552429199219,
+        "capacity_m3_s": 5.353464221953911
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            5400.0,
+            5400.0
+          ],
+          [
+            5400.0,
+            4800.0
+          ]
+        ]
+      },
+      "properties": {
+        "edge_id": "PIPE-0119",
+        "from_node": "MH-INT-0128",
+        "to_node": "MH-INT-0127",
+        "length_m": 600.0,
+        "diameter_m": 1.4,
+        "slope": 0.006000569661458333,
+        "capacity_m3_s": 4.5555855241473004
+      }
+    }
+  ]
+}

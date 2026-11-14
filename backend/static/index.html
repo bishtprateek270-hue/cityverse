@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CityVerse | Geographic Urban Digital Twin</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+    <!-- Top Navigation Bar -->
+    <header class="app-header">
+        <div class="logo-group">
+            <div class="pulse-indicator"></div>
+            <div class="logo-title">CITY<span class="highlight">VERSE</span></div>
+            <div class="tagline">Geographic Urban Digital Twin</div>
+        </div>
+
+        <div class="header-stats">
+            <div class="stat-badge">
+                <span class="label">TERRAIN DOMAIN</span>
+                <span class="val">METROVERDIA (6km × 6km)</span>
+            </div>
+            <div class="stat-badge">
+                <span class="label">DYNAMICS ENGINE</span>
+                <span id="engineBadge" class="val val-accent">NEURAL WORLD MODEL (2ms)</span>
+            </div>
+            <div class="stat-badge">
+                <span class="label">SIMULATION CLOCK</span>
+                <span id="simTimeDisplay" class="val val-mono">T+00:00:00</span>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <button id="btnRunFullScenario" class="btn btn-primary">
+                <span class="icon">⚡</span> <span id="runScenarioLabel">RUN SCENARIO (3 HR)</span>
+            </button>
+            <button id="btnPlayPause" class="btn btn-secondary">
+                <span class="icon" id="playIcon">▶</span> <span id="playPauseLabel">PLAY</span>
+            </button>
+            <button id="btnReset" class="btn btn-ghost">
+                <span class="icon">↺</span> RESET
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Operational Workspace Grid -->
+    <main class="workspace-grid">
+        <!-- LEFT PANEL: Scenario Builder & Physical Controls -->
+        <aside class="panel left-panel">
+            <div class="panel-section">
+                <div class="section-title">
+                    <span class="icon">⚡</span> NATURAL LANGUAGE SCENARIO
+                </div>
+                <div class="nlp-box">
+                    <textarea id="nlpInput" rows="3" placeholder="e.g. Simulate 120 mm/hour rainfall for 3 hours with 40% drainage blockage and pump 1 failure..."></textarea>
+                    <button id="btnNlpExecute" class="btn btn-accent btn-sm">PARSE & EXECUTE SCENARIO</button>
+                    <div id="nlpTags" class="nlp-tags"></div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="section-title">
+                    <span class="icon">⚙</span> ENVIRONMENTAL CONTROLS
+                </div>
+
+                <!-- Physical Environmental Sliders -->
+                <div class="control-row">
+                    <div class="control-label">
+                        <span>Rainfall Intensity</span>
+                        <span id="valRainfall" class="control-val">120 mm/hr</span>
+                    </div>
+                    <input type="range" id="sliderRainfall" min="0" max="200" value="120" step="5">
+                </div>
+
+                <div class="control-row">
+                    <div class="control-label">
+                        <span>Storm Duration</span>
+                        <span id="valDuration" class="control-val">3.0 hrs</span>
+                    </div>
+                    <input type="range" id="sliderDuration" min="1" max="6" value="3" step="0.5">
+                </div>
+
+                <div class="control-row">
+                    <div class="control-label">
+                        <span>Drainage Capacity (Blockage)</span>
+                        <span id="valDrainage" class="control-val">60%</span>
+                    </div>
+                    <input type="range" id="sliderDrainage" min="10" max="100" value="60" step="5">
+                </div>
+
+                <div class="control-row">
+                    <div class="control-label">
+                        <span>Pump 1 Throttle (South Basin)</span>
+                        <span id="valPump1" class="control-val">100%</span>
+                    </div>
+                    <input type="range" id="sliderPump1" min="0" max="100" value="100" step="10">
+                </div>
+
+                <div class="control-row">
+                    <div class="control-label">
+                        <span>Pump 2 Throttle (Confluence)</span>
+                        <span id="valPump2" class="control-val">100%</span>
+                    </div>
+                    <input type="range" id="sliderPump2" min="0" max="100" value="100" step="10">
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="section-title">
+                    <span class="icon">🔀</span> COUNTERFACTUAL BRANCHING
+                </div>
+                <div class="branch-controls">
+                    <div class="active-branch-badge">
+                        TIMELINE: <strong id="currentBranchDisplay">baseline</strong>
+                    </div>
+                    <div class="btn-group-column">
+                        <button id="btnForkBranch" class="btn btn-secondary btn-sm">
+                            FORK INTERVENTION (BRANCH B)
+                        </button>
+                        <button id="btnCompareBranches" class="btn btn-ghost btn-sm" disabled>
+                            COMPARE BASELINE vs BRANCH B
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="section-title">
+                    <span class="icon">🧠</span> DYNAMICS ENGINE
+                </div>
+                <div class="toggle-group">
+                    <button id="modeNeural" class="toggle-btn active">Neural World Model (2ms)</button>
+                    <button id="modePhysics" class="toggle-btn">Coupled 2D Physics</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER PANEL: Geographical City Map Viewport -->
+        <section class="panel center-panel">
+            <!-- Geographical Map Header Toolbar -->
+            <div class="map-toolbar">
+                <div class="map-title-badge">
+                    <span class="icon">🗺️</span> GEOGRAPHICAL TOP-DOWN TWIN
+                </div>
+                <div class="layer-toggles">
+                    <label><input type="checkbox" id="chkWater" checked> Inundation Depth</label>
+                    <label><input type="checkbox" id="chkRoads" checked> Road Accessibility</label>
+                    <label><input type="checkbox" id="chkBlocks" checked> Urban Blocks</label>
+                    <label><input type="checkbox" id="chkFootprints" checked> Building Footprints</label>
+                    <label><input type="checkbox" id="chkHillshade" checked> Terrain Relief</label>
+                    <label><input type="checkbox" id="chkFacilities" checked> Critical Facilities</label>
+                </div>
+            </div>
+
+            <div class="canvas-container" id="canvasContainer">
+                <canvas id="cityCanvas" width="1000" height="1000"></canvas>
+
+                <!-- Scientific Hydrologic Map Legend -->
+                <div class="canvas-overlay map-legend">
+                    <div class="legend-header">HYDROLOGIC & ROAD ATLAS</div>
+                    <div class="legend-item"><span class="legend-color color-water-shallow"></span> Shallow Ponding (0.05m - 0.15m)</div>
+                    <div class="legend-item"><span class="legend-color color-water-moderate"></span> Passenger Road Stall (0.15m - 0.30m)</div>
+                    <div class="legend-item"><span class="legend-color color-water-deep"></span> Emergency Cutoff (&gt;0.30m)</div>
+                    <div class="legend-item"><span class="legend-color color-river"></span> River & Drainage Outfalls</div>
+                    <div class="legend-item"><span class="legend-color color-road-open"></span> Open Road Segment</div>
+                    <div class="legend-item"><span class="legend-color color-road-slow"></span> Speed Degraded (Pregnolato)</div>
+                    <div class="legend-item"><span class="legend-color color-road-closed"></span> Closed / Impassable Road</div>
+                    <div class="legend-item"><span class="legend-color color-facility-hosp"></span> Level-1 Trauma Hospital</div>
+                    <div class="legend-item"><span class="legend-color color-facility-sub"></span> Electrical Substation (138kV)</div>
+                    <div class="legend-item"><span class="legend-color color-facility-pump"></span> Stormwater Lift Pump</div>
+                </div>
+
+                <!-- Hover Location Inspector -->
+                <div id="inspectorCard" class="canvas-overlay inspector-card hidden">
+                    <div class="inspector-header">GEOGRAPHIC LOCATION INSPECTOR</div>
+                    <div id="inspectorContent" class="inspector-body">
+                        <!-- Populated on mousemove -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTTOM PANEL: Timeline & Time Scrubber -->
+            <footer class="bottom-timeline-panel">
+                <div class="timeline-controls">
+                    <button id="btnStepBack" class="btn btn-secondary btn-sm" title="Step Back 5 Minutes">
+                        <span>⏮ -5m</span>
+                    </button>
+                    <button id="btnStepPlay" class="btn btn-primary btn-sm">
+                        <span id="timelinePlayIcon">▶</span>
+                    </button>
+                    <button id="btnStepForward" class="btn btn-secondary btn-sm" title="Step Forward 5 Minutes">
+                        <span>⏭ +5m</span>
+                    </button>
+                    
+                    <div class="timeline-clock">
+                        <span id="timelineTimeLabel">T+00:00</span> / <span id="timelineTotalLabel">T+03:00</span>
+                    </div>
+
+                    <div class="timeline-slider-box">
+                        <input type="range" id="timelineScrubber" min="0" max="36" value="0" step="1">
+                        <div class="timeline-ticks">
+                            <span>0h</span>
+                            <span>1h</span>
+                            <span>2h</span>
+                            <span>3h</span>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </section>
+
+        <!-- RIGHT PANEL: Live Scientific Telemetry -->
+        <aside class="panel right-panel">
+            <div class="panel-section">
+                <div class="section-title">
+                    <span class="icon">📊</span> SCIENTIFIC TELEMETRY
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <span class="kpi-title">INUNDATED AREA (&gt;15cm)</span>
+                        <span id="kpiFloodedArea" class="kpi-value val-danger">0.00 km²</span>
+                        <span id="kpiFloodedArea30cm" class="kpi-sub">0.00 km² &gt;30cm</span>
+                    </div>
+
+                    <div class="kpi-card">
+                        <span class="kpi-title">PEAK SURFACE DEPTH</span>
+                        <span id="kpiMaxDepth" class="kpi-value val-accent">0.00 m</span>
+                        <span id="kpiTotalVolume" class="kpi-sub">0.0 m³ surface water</span>
+                    </div>
+
+                    <div class="kpi-card">
+                        <span class="kpi-title">ROAD NETWORK STATUS</span>
+                        <span id="kpiClosedRoads" class="kpi-value">0 Closed</span>
+                        <span id="kpiClosedEmergency" class="kpi-sub">0 emergency severed</span>
+                    </div>
+
+                    <div class="kpi-card">
+                        <span class="kpi-title">AVG EMS TRAUMA LATENCY</span>
+                        <span id="kpiEmsResponse" class="kpi-value val-accent">5.2 min</span>
+                        <span id="kpiEmsCoverage" class="kpi-sub">100.0% Reachable</span>
+                    </div>
+
+                    <div class="kpi-card">
+                        <span class="kpi-title">POWER & SUBSTATIONS</span>
+                        <span id="kpiSubstations" class="kpi-value val-success">3/3 Active</span>
+                        <span id="kpiSubstationLoad" class="kpi-sub">All Grids Energized</span>
+                    </div>
+
+                    <div class="kpi-card">
+                        <span class="kpi-title">STORMWATER PUMP LIFTS</span>
+                        <span id="kpiPumps" class="kpi-value val-success">25 m³/s</span>
+                        <span id="kpiPumpStatus" class="kpi-sub">Pumps 1 & 2 Operational</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Series Sparklines -->
+            <div class="panel-section">
+                <div class="section-title">
+                    <span class="icon">📈</span> TEMPORAL IMPACT PROFILES
+                </div>
+                <div class="chart-box">
+                    <div class="chart-label">Inundation Evolution (km² &gt;15cm)</div>
+                    <canvas id="chartFlood" width="300" height="90"></canvas>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-label">EMS Response Latency (minutes)</div>
+                    <canvas id="chartEms" width="300" height="90"></canvas>
+                </div>
+            </div>
+
+            <!-- Counterfactual A/B Comparison Card -->
+            <div id="diffSection" class="panel-section diff-section hidden">
+                <div class="section-title">
+                    <span class="icon">⚖</span> BASELINE vs BRANCH B COUNTERFACTUAL
+                </div>
+                <div class="diff-card">
+                    <div class="diff-row">
+                        <span>Δ Flooded Area:</span>
+                        <strong id="diffFloodArea" class="val-accent">-0.00 km²</strong>
+                    </div>
+                    <div class="diff-row">
+                        <span>Δ EMS Response Time:</span>
+                        <strong id="diffEmsTime" class="val-accent">-0.00 min</strong>
+                    </div>
+                    <div class="diff-row">
+                        <span>Δ Impassable Roads:</span>
+                        <strong id="diffClosedRoads" class="val-accent">0</strong>
+                    </div>
+                    <div id="diffRecommendation" class="diff-badge badge-success">
+                        Evaluating countermeasure effectiveness...
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

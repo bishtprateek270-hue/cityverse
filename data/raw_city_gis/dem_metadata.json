@@ -1,0 +1,12 @@
+{
+  "extent_x_m": 6000.0,
+  "extent_y_m": 6000.0,
+  "dx": 50.0,
+  "dy": 50.0,
+  "rows": 120,
+  "cols": 120,
+  "min_elevation_m": 12.0,
+  "max_elevation_m": 60.75181579589844,
+  "mean_elevation_m": 32.72673034667969,
+  "river_cell_count": 149
+}
