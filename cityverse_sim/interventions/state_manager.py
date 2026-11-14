@@ -200,6 +200,7 @@ class CityStateManager:
             out = self.world_model(grid_in, scalar_vec, action_vec)
             
         pred_h = out["pred_grid_h"].squeeze().cpu().numpy()
+        pred_h = np.clip(pred_h, 0.0, 5.5)  # Enforce physical maximum urban water depth bounds
         pred_scalars = out["pred_scalars"].squeeze().cpu().numpy()
         
         # Update surface water depth and dynamic road closures

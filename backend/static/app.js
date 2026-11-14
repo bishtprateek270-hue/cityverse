@@ -42,7 +42,15 @@ const state = {
     skyCanvasTex: null,
     sunMesh: null,
     aviationBeacons: [],
+    helipadBeacons: [],
+    pumpingBeacons: [],
     rainData: [],
+
+    // Street Furniture & LED Streetlights
+    streetFurnitureGroup: null,
+    streetlights: [],
+    streetlightLocalLights: [],
+    streetlightLensMat: null,
 
     // Environmental Atmospheric Weather & Lighting System
     weatherMode: "auto", // "auto", "day", "night"
@@ -1124,6 +1132,9 @@ function build3DCityScene() {
     // 7. Interactive Sandbag Berms Group
     state.sandbagsGroup = new THREE.Group();
     state.scene.add(state.sandbagsGroup);
+
+    // 8. 3D Street Furniture & LED Streetlights
+    buildStreetFurniture3D();
 }
 
 function buildTerrainMesh() {
@@ -1853,12 +1864,32 @@ function buildBuildings3D() {
             // Helipad on high-rises (height >= 75m and roof space w3 >= 6.0)
             if (p.height_m >= 75.0 && w3 >= 6.0) {
                 const padRadius = Math.min(w3 * 0.40, 6.5);
-                const padGeom = new THREE.CylinderGeometry(padRadius, padRadius, 0.25, 24);
+                const padGeom = new THREE.CylinderGeometry(padRadius, padRadius, 0.28, 24);
                 const padSideMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
                 const padMats = [padSideMat, helipadMat, padSideMat];
                 const pad = new THREE.Mesh(padGeom, padMats);
-                pad.position.set(0, roofTopY + 0.15, 0);
+                pad.position.set(0, roofTopY + 0.14, 0);
                 bldgGroup.add(pad);
+
+                // Perimeter Safety Net Cantilever Lip Ring
+                const lipGeom = new THREE.CylinderGeometry(padRadius * 1.08, padRadius * 1.08, 0.08, 24);
+                const lipMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.4 });
+                const lip = new THREE.Mesh(lipGeom, lipMat);
+                lip.position.set(0, roofTopY + 0.06, 0);
+                bldgGroup.add(lip);
+
+                // 12 Perimeter LED Runway Beacons around helipad
+                const beaconGeom = new THREE.SphereGeometry(0.18, 8, 8);
+                for (let b = 0; b < 12; b++) {
+                    const angle = (b / 12) * Math.PI * 2;
+                    const bx = Math.cos(angle) * (padRadius * 0.94);
+                    const bz = Math.sin(angle) * (padRadius * 0.94);
+                    const bMat = new THREE.MeshBasicMaterial({ color: (b % 2 === 0) ? 0x10b981 : 0xf8fafc });
+                    const beacon = new THREE.Mesh(beaconGeom, bMat);
+                    beacon.position.set(bx, roofTopY + 0.32, bz);
+                    bldgGroup.add(beacon);
+                    state.helipadBeacons.push(beacon);
+                }
             }
 
             // Communications Spire & FAA Warning Beacon on tall towers (height >= 80m)
@@ -1920,6 +1951,21 @@ function buildBuildings3D() {
             tank.position.set(-bw * 0.25, roofTopY + 1.2 + tankH / 2.0, bd * 0.2);
             bldgGroup.add(tank);
 
+            // 4-Legged Structural Steel Truss Stilt Support
+            const legGeom = new THREE.CylinderGeometry(0.06, 0.06, 1.2, 6);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 });
+            const legOffsets = [
+                [-tankRadius * 0.65, -tankRadius * 0.65],
+                [tankRadius * 0.65, -tankRadius * 0.65],
+                [-tankRadius * 0.65, tankRadius * 0.65],
+                [tankRadius * 0.65, tankRadius * 0.65]
+            ];
+            legOffsets.forEach(([ox, oz]) => {
+                const leg = new THREE.Mesh(legGeom, legMat);
+                leg.position.set(-bw * 0.25 + ox, roofTopY + 0.6, bd * 0.2 + oz);
+                bldgGroup.add(leg);
+            });
+
             // Conical Roof Cap on Tank
             const capGeom = new THREE.ConeGeometry(tankRadius * 1.1, 0.9, 12);
             const capMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.6 });
@@ -1972,6 +2018,15 @@ function buildBuildings3D() {
 
 function buildFacilities3D() {
     state.facilitiesGroup = new THREE.Group();
+    state.pumpingBeacons = [];
+
+    // Shared Helipad Material for Facilities
+    const helipadTex = createHelipadTexture();
+    const facHelipadMat = new THREE.MeshStandardMaterial({
+        map: helipadTex,
+        roughness: 0.45,
+        metalness: 0.20
+    });
 
     state.facilities.forEach(fac => {
         const p = fac.properties;
@@ -1979,29 +2034,455 @@ function buildFacilities3D() {
         const p3d = worldTo3D(fx, fy);
         const gy = getTerrainElevation(fx, fy);
 
-        // Facility Base
+        const facGroup = new THREE.Group();
+        facGroup.position.set(p3d.x, gy, p3d.z);
+
         let color = 0x00f0ff;
         if (p.category === "hospitals") color = 0xef4444;
         else if (p.category === "pumping_stations") color = 0x10b981;
         else if (p.category === "ems_stations") color = 0xf59e0b;
 
-        const geom = new THREE.CylinderGeometry(3.5, 4.0, 4.0, 16);
-        const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, emissive: color, emissiveIntensity: 0.4 });
-        const base = new THREE.Mesh(geom, mat);
-        base.position.set(p3d.x, gy + 2.0, p3d.z);
-
         // Floating holographic marker badge above
-        const badgeGeom = new THREE.SphereGeometry(1.5, 12, 12);
+        const badgeGeom = new THREE.SphereGeometry(1.6, 12, 12);
         const badgeMat = new THREE.MeshBasicMaterial({ color: color });
         const badge = new THREE.Mesh(badgeGeom, badgeMat);
-        badge.position.set(p3d.x, gy + 9.0, p3d.z);
+        badge.position.set(0, 24.0, 0);
+        facGroup.add(badge);
 
-        base.userData = { id: p.name, category: p.category, badge: badge };
-        state.facilitiesGroup.add(base);
-        state.facilitiesGroup.add(badge);
+        facGroup.userData = { id: p.name, category: p.category, badge: badge };
+
+        if (p.category === "hospitals") {
+            // Main Hospital Pavilion Building
+            const bldgW = 28.0, bldgD = 18.0, bldgH = 16.0;
+            const bldgGeom = new THREE.BoxGeometry(bldgW, bldgH, bldgD);
+            const bldgMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4, metalness: 0.1 });
+            const hospBldg = new THREE.Mesh(bldgGeom, bldgMat);
+            hospBldg.position.set(0, bldgH / 2.0, 0);
+            hospBldg.castShadow = true;
+            hospBldg.receiveShadow = true;
+            facGroup.add(hospBldg);
+
+            // Blue Tinted Curtain Ribbon Windows
+            const winGeom = new THREE.BoxGeometry(bldgW * 0.92, 2.2, bldgD + 0.2);
+            const winMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.2, metalness: 0.6, emissive: 0x0284c7, emissiveIntensity: 0.25 });
+            for (let f = 0; f < 3; f++) {
+                const win = new THREE.Mesh(winGeom, winMat);
+                win.position.set(0, 4.0 + f * 4.2, 0);
+                facGroup.add(win);
+            }
+
+            // Emergency Ambulance Intake Driveway Canopy
+            const canW = 14.0, canD = 8.0, canH = 3.6;
+            const canRoofGeom = new THREE.BoxGeometry(canW, 0.4, canD);
+            const canRoofMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.4 });
+            const canRoof = new THREE.Mesh(canRoofGeom, canRoofMat);
+            canRoof.position.set(0, canH, bldgD / 2.0 + canD / 2.0 - 0.5);
+            facGroup.add(canRoof);
+
+            // Red Medical Cross Signage above entrance
+            const crossMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 0.85 });
+            const cVert = new THREE.Mesh(new THREE.BoxGeometry(0.7, 2.4, 0.15), crossMat);
+            cVert.position.set(0, canH + 1.4, bldgD / 2.0 + 0.1);
+            facGroup.add(cVert);
+            const cHoriz = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.7, 0.15), crossMat);
+            cHoriz.position.set(0, canH + 1.4, bldgD / 2.0 + 0.1);
+            facGroup.add(cHoriz);
+
+            // Rooftop Elevated Emergency Trauma Helipad Platform
+            const padElev = bldgH + 3.0;
+            // 4 Steel Structural Support Pylons
+            const pylonGeom = new THREE.CylinderGeometry(0.35, 0.35, 3.0, 8);
+            const pylonMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.3 });
+            const pylonCoords = [[-5, -5], [5, -5], [-5, 5], [5, 5]];
+            pylonCoords.forEach(([px, pz]) => {
+                const pylon = new THREE.Mesh(pylonGeom, pylonMat);
+                pylon.position.set(px, bldgH + 1.5, pz);
+                facGroup.add(pylon);
+            });
+
+            // Helipad Deck
+            const padDeckGeom = new THREE.CylinderGeometry(7.2, 7.2, 0.35, 24);
+            const padDeckMats = [pylonMat, facHelipadMat, pylonMat];
+            const padDeck = new THREE.Mesh(padDeckGeom, padDeckMats);
+            padDeck.position.set(0, padElev + 0.18, 0);
+            facGroup.add(padDeck);
+
+            // 12 Perimeter LED Green/White Runway Beacons
+            const bGeom = new THREE.SphereGeometry(0.22, 8, 8);
+            for (let b = 0; b < 12; b++) {
+                const angle = (b / 12) * Math.PI * 2;
+                const bx = Math.cos(angle) * 6.8;
+                const bz = Math.sin(angle) * 6.8;
+                const bMat = new THREE.MeshBasicMaterial({ color: (b % 2 === 0) ? 0x10b981 : 0xf8fafc });
+                const beacon = new THREE.Mesh(bGeom, bMat);
+                beacon.position.set(bx, padElev + 0.40, bz);
+                facGroup.add(beacon);
+                state.helipadBeacons.push(beacon);
+            }
+
+            // High Mast Emergency Strobe Beacon atop Hospital Roof
+            const mastGeom = new THREE.CylinderGeometry(0.12, 0.22, 6.0, 8);
+            const mastMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 });
+            const mast = new THREE.Mesh(mastGeom, mastMat);
+            mast.position.set(-bldgW * 0.35, bldgH + 3.0, -bldgD * 0.3);
+            facGroup.add(mast);
+
+            const mastBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+            mastBeacon.position.set(-bldgW * 0.35, bldgH + 6.2, -bldgD * 0.3);
+            facGroup.add(mastBeacon);
+            state.aviationBeacons.push(mastBeacon);
+
+        } else if (p.category === "pumping_stations") {
+            // Industrial Pump House Building
+            const pHouseW = 18.0, pHouseD = 12.0, pHouseH = 8.0;
+            const pHouseGeom = new THREE.BoxGeometry(pHouseW, pHouseH, pHouseD);
+            const pHouseMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.5, roughness: 0.5 });
+            const pHouse = new THREE.Mesh(pHouseGeom, pHouseMat);
+            pHouse.position.set(0, pHouseH / 2.0, 0);
+            pHouse.castShadow = true;
+            facGroup.add(pHouse);
+
+            // Dual Massive High-Pressure Stormwater Discharge Pipes
+            const pipeGeom = new THREE.CylinderGeometry(1.0, 1.0, 9.0, 16);
+            const pipeMat = new THREE.MeshStandardMaterial({ color: 0x10b981, metalness: 0.8, roughness: 0.3 });
+            [-3.5, 3.5].forEach(ox => {
+                const pipe = new THREE.Mesh(pipeGeom, pipeMat);
+                pipe.rotation.x = Math.PI / 3.0;
+                pipe.position.set(ox, 2.5, pHouseD / 2.0 + 3.2);
+                facGroup.add(pipe);
+            });
+
+            // Rooftop Industrial Cooling Turbine Exhaust Cowlings
+            const turbGeom = new THREE.CylinderGeometry(1.4, 1.6, 1.8, 16);
+            const turbMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 });
+            [-4.0, 4.0].forEach(ox => {
+                const turb = new THREE.Mesh(turbGeom, turbMat);
+                turb.position.set(ox, pHouseH + 0.9, 0);
+                facGroup.add(turb);
+            });
+
+            // High-Visibility Amber Rotating Warning Strobe Beacon atop Roof
+            const strobeStand = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 2.0, 8), turbMat);
+            strobeStand.position.set(0, pHouseH + 1.0, 0);
+            facGroup.add(strobeStand);
+
+            const strobeLight = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.40, 0.40, 0.55, 12),
+                new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xf59e0b, emissiveIntensity: 0.85 })
+            );
+            strobeLight.position.set(0, pHouseH + 2.2, 0);
+            facGroup.add(strobeLight);
+            state.pumpingBeacons.push(strobeLight);
+
+        } else if (p.category === "electrical_substations") {
+            // Substation Gravel Yard Slab
+            const yardW = 22.0, yardD = 18.0, yardH = 0.4;
+            const yardGeom = new THREE.BoxGeometry(yardW, yardH, yardD);
+            const yardMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.9, metalness: 0.1 });
+            const yard = new THREE.Mesh(yardGeom, yardMat);
+            yard.position.set(0, yardH / 2.0, 0);
+            facGroup.add(yard);
+
+            // 3 Heavy-Duty Step-Down Power Transformers with Radiator Fins
+            const transGeom = new THREE.BoxGeometry(3.6, 3.2, 2.8);
+            const transMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.4 });
+            const bushGeom = new THREE.CylinderGeometry(0.12, 0.22, 1.4, 8);
+            const bushMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.3 }); // Ceramic insulator
+
+            [-6.5, 0, 6.5].forEach(ox => {
+                const trans = new THREE.Mesh(transGeom, transMat);
+                trans.position.set(ox, yardH + 1.6, -2.0);
+                facGroup.add(trans);
+
+                // 3 Ceramic High-Voltage Insulator Bushings atop each unit
+                [-0.9, 0, 0.9].forEach(bx => {
+                    const bush = new THREE.Mesh(bushGeom, bushMat);
+                    bush.position.set(ox + bx, yardH + 3.2 + 0.7, -2.0);
+                    facGroup.add(bush);
+                });
+            });
+
+            // Overhead Transmission Gantry Steel Truss Tower
+            const gantryGeom = new THREE.BoxGeometry(yardW * 0.9, 0.4, 0.4);
+            const gantryMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.85, roughness: 0.25 });
+            const gantryBar = new THREE.Mesh(gantryGeom, gantryMat);
+            gantryBar.position.set(0, 8.5, 3.0);
+            facGroup.add(gantryBar);
+
+            const gPylonGeom = new THREE.CylinderGeometry(0.2, 0.25, 8.5, 8);
+            [-yardW * 0.42, yardW * 0.42].forEach(px => {
+                const gp = new THREE.Mesh(gPylonGeom, gantryMat);
+                gp.position.set(px, 4.25, 3.0);
+                facGroup.add(gp);
+            });
+
+            // Auxiliary Diesel Generator Hardening Enclosure
+            const genGeom = new THREE.BoxGeometry(5.0, 2.4, 3.2);
+            const genMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6, roughness: 0.4 });
+            const gen = new THREE.Mesh(genGeom, genMat);
+            gen.position.set(0, yardH + 1.2, 6.0);
+            facGroup.add(gen);
+            facGroup.userData.indicatorMesh = gen;
+
+        } else {
+            // EMS Stations & General Public Safety
+            const geom = new THREE.CylinderGeometry(3.5, 4.0, 4.0, 16);
+            const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, emissive: color, emissiveIntensity: 0.4 });
+            const base = new THREE.Mesh(geom, mat);
+            base.position.set(0, 2.0, 0);
+            facGroup.add(base);
+        }
+
+        state.facilitiesGroup.add(facGroup);
     });
 
     state.scene.add(state.facilitiesGroup);
+}
+
+function buildStreetFurniture3D() {
+    state.streetFurnitureGroup = new THREE.Group();
+    state.streetlights = [];
+    state.streetlightLocalLights = [];
+
+    // Shared Materials for High-Performance Rendering
+    state.streetlightLensMat = new THREE.MeshStandardMaterial({
+        color: 0xfffbeb,
+        emissive: 0xfffbeb,
+        emissiveIntensity: 0.0,
+        roughness: 0.15,
+        metalness: 0.2
+    });
+
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.35 });
+    const headMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.4 });
+    const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+    const treeFoliageMat1 = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 });
+    const treeFoliageMat2 = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.85 });
+    const planterMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8, metalness: 0.1 });
+    const soilMat = new THREE.MeshStandardMaterial({ color: 0x3f2314, roughness: 0.95 });
+    const busShelterFrameMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.7, roughness: 0.3 });
+    const busShelterGlassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45, roughness: 0.1, metalness: 0.5 });
+    const busShelterBenchMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.7 });
+    const busKioskMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0284c7, emissiveIntensity: 0.65, roughness: 0.2 });
+    const hydrantMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.3, roughness: 0.4 });
+    const hydrantCapMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, metalness: 0.9, roughness: 0.15 });
+
+    // Shared Geometries
+    const poleBaseGeom = new THREE.CylinderGeometry(0.20, 0.24, 0.25, 8);
+    const poleMastGeom = new THREE.CylinderGeometry(0.065, 0.095, 5.2, 8);
+    const poleArmGeom = new THREE.BoxGeometry(0.08, 0.08, 1.4);
+    const luminaireHeadGeom = new THREE.BoxGeometry(0.35, 0.14, 0.65);
+    const luminaireLensGeom = new THREE.BoxGeometry(0.28, 0.04, 0.50);
+
+    const planterGeom = new THREE.BoxGeometry(0.9, 0.35, 0.9);
+    const soilGeom = new THREE.BoxGeometry(0.82, 0.36, 0.82);
+    const trunkGeom = new THREE.CylinderGeometry(0.08, 0.11, 2.2, 8);
+    const foliageGeom1 = new THREE.IcosahedronGeometry(1.25, 1);
+    const foliageGeom2 = new THREE.IcosahedronGeometry(0.95, 1);
+
+    const busRoofGeom = new THREE.BoxGeometry(3.2, 0.12, 1.6);
+    const busPostGeom = new THREE.CylinderGeometry(0.05, 0.05, 2.4, 6);
+    const busGlassGeom = new THREE.BoxGeometry(3.0, 1.9, 0.06);
+    const busBenchGeom = new THREE.BoxGeometry(2.2, 0.10, 0.45);
+    const busKioskGeom = new THREE.BoxGeometry(0.45, 1.8, 0.25);
+
+    const hydrantBodyGeom = new THREE.CylinderGeometry(0.14, 0.16, 0.65, 8);
+    const hydrantDomeGeom = new THREE.SphereGeometry(0.15, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    const hydrantNozzleGeom = new THREE.CylinderGeometry(0.06, 0.06, 0.32, 6);
+
+    const processedStreets = new Set();
+    let lightCounter = 0;
+
+    Object.values(state.roadGraph).forEach(edge => {
+        if (processedStreets.has(edge.streetKey)) return;
+        processedStreets.add(edge.streetKey);
+
+        const p1 = edge.start;
+        const p2 = edge.end;
+        const L = edge.length;
+        if (L < 16.0) return;
+
+        const dx = p2.x - p1.x;
+        const dz = p2.z - p1.z;
+        const dirX = dx / L;
+        const dirZ = dz / L;
+        const normX = -dirZ;
+        const normZ = dirX;
+
+        const spacing = 34.0;
+        const numLights = Math.max(1, Math.floor(L / spacing));
+        const curbOffset = (edge.width * 0.5) + 0.85;
+
+        for (let k = 0; k < numLights; k++) {
+            const t = (k + 0.5) / numLights;
+            const px = p1.x + dirX * (t * L);
+            const pz = p1.z + dirZ * (t * L);
+            const py = p1.y + (p2.y - p1.y) * t;
+
+            // Alternate sides along the street
+            const side = (k % 2 === 0) ? 1.0 : -1.0;
+            const poleX = px + normX * (side * curbOffset);
+            const poleZ = pz + normZ * (side * curbOffset);
+            const poleY = py;
+
+            // Angle to face the road center
+            const armDirX = -normX * side;
+            const armDirZ = -normZ * side;
+            const rotY = Math.atan2(armDirX, armDirZ);
+
+            // Construct Modern LED Streetlight
+            const lightGroup = new THREE.Group();
+            lightGroup.position.set(poleX, poleY, poleZ);
+            lightGroup.rotation.y = rotY;
+
+            const baseMesh = new THREE.Mesh(poleBaseGeom, poleMat);
+            baseMesh.position.y = 0.125;
+            lightGroup.add(baseMesh);
+
+            const mastMesh = new THREE.Mesh(poleMastGeom, poleMat);
+            mastMesh.position.y = 2.6;
+            lightGroup.add(mastMesh);
+
+            const armMesh = new THREE.Mesh(poleArmGeom, poleMat);
+            armMesh.position.set(0, 5.2, 0.65);
+            armMesh.rotation.x = -0.12; // Slight upward cant
+            lightGroup.add(armMesh);
+
+            const headMesh = new THREE.Mesh(luminaireHeadGeom, headMat);
+            headMesh.position.set(0, 5.28, 1.35);
+            headMesh.rotation.x = 0.12; // Angled down towards roadway
+            lightGroup.add(headMesh);
+
+            const lensMesh = new THREE.Mesh(luminaireLensGeom, state.streetlightLensMat);
+            lensMesh.position.set(0, 5.21, 1.35);
+            lensMesh.rotation.x = 0.12;
+            lightGroup.add(lensMesh);
+            state.streetlights.push(lensMesh);
+
+            // Localized warm night pool light on every 4th streetlight
+            lightCounter++;
+            if (lightCounter % 4 === 0) {
+                const spot = new THREE.PointLight(0xfffbeb, 0.0, 16.0, 2.0);
+                spot.position.set(0, 4.9, 1.35);
+                lightGroup.add(spot);
+                state.streetlightLocalLights.push(spot);
+            }
+
+            state.streetFurnitureGroup.add(lightGroup);
+
+            // Decorative Sidewalk Shade Tree between streetlights (non-highway)
+            if (edge.roadClass !== "highway" && L > 28.0 && k < numLights - 1) {
+                const treeT = (k + 1.0) / numLights;
+                const treePx = p1.x + dirX * (treeT * L);
+                const treePz = p1.z + dirZ * (treeT * L);
+                const treePy = p1.y + (p2.y - p1.y) * treeT;
+                const treeSide = -side; // Opposite curb
+                const treeX = treePx + normX * (treeSide * (curbOffset + 0.35));
+                const treeZ = treePz + normZ * (treeSide * (curbOffset + 0.35));
+
+                const treeGroup = new THREE.Group();
+                treeGroup.position.set(treeX, treePy, treeZ);
+
+                const planter = new THREE.Mesh(planterGeom, planterMat);
+                planter.position.y = 0.175;
+                treeGroup.add(planter);
+
+                const soil = new THREE.Mesh(soilGeom, soilMat);
+                soil.position.y = 0.18;
+                treeGroup.add(soil);
+
+                const trunk = new THREE.Mesh(trunkGeom, treeTrunkMat);
+                trunk.position.y = 1.1;
+                treeGroup.add(trunk);
+
+                const fol1 = new THREE.Mesh(foliageGeom1, treeFoliageMat1);
+                fol1.position.y = 2.4;
+                treeGroup.add(fol1);
+
+                const fol2 = new THREE.Mesh(foliageGeom2, treeFoliageMat2);
+                fol2.position.set(0.2, 3.1, -0.15);
+                treeGroup.add(fol2);
+
+                state.streetFurnitureGroup.add(treeGroup);
+            }
+        }
+
+        // Modern Glass Transit Bus Shelter on Arterial Roads
+        if (edge.roadClass === "arterial" && L > 45.0) {
+            const busT = 0.22;
+            const bx = p1.x + dirX * (busT * L);
+            const bz = p1.z + dirZ * (busT * L);
+            const by = p1.y + (p2.y - p1.y) * busT;
+            const bSide = 1.0;
+            const shelterX = bx + normX * (bSide * (curbOffset + 1.25));
+            const shelterZ = bz + normZ * (bSide * (curbOffset + 1.25));
+            const shelterRotY = Math.atan2(-normX * bSide, -normZ * bSide);
+
+            const shelterGroup = new THREE.Group();
+            shelterGroup.position.set(shelterX, by, shelterZ);
+            shelterGroup.rotation.y = shelterRotY;
+
+            // Canopy
+            const sRoof = new THREE.Mesh(busRoofGeom, busShelterFrameMat);
+            sRoof.position.set(0, 2.4, 0.4);
+            shelterGroup.add(sRoof);
+
+            // 4 Corner Posts
+            const postOffsets = [[-1.5, -0.3], [1.5, -0.3], [-1.5, 1.1], [1.5, 1.1]];
+            postOffsets.forEach(([ox, oz]) => {
+                const post = new THREE.Mesh(busPostGeom, busShelterFrameMat);
+                post.position.set(ox, 1.2, oz);
+                shelterGroup.add(post);
+            });
+
+            // Tempered Glass Back Windscreen
+            const glass = new THREE.Mesh(busGlassGeom, busShelterGlassMat);
+            glass.position.set(0, 1.2, -0.3);
+            shelterGroup.add(glass);
+
+            // Teak Passenger Bench
+            const bench = new THREE.Mesh(busBenchGeom, busShelterBenchMat);
+            bench.position.set(0, 0.45, 0.1);
+            shelterGroup.add(bench);
+
+            // Digital Transit Timetable Kiosk
+            const kiosk = new THREE.Mesh(busKioskGeom, busKioskMat);
+            kiosk.position.set(1.75, 0.9, 0.4);
+            shelterGroup.add(kiosk);
+
+            state.streetFurnitureGroup.add(shelterGroup);
+        }
+
+        // Safety Red Fire Hydrant near Street Corner
+        if (L > 24.0) {
+            const hydT = 0.07;
+            const hx = p1.x + dirX * (hydT * L);
+            const hz = p1.z + dirZ * (hydT * L);
+            const hy = p1.y + (p2.y - p1.y) * hydT;
+            const hydX = hx + normX * (1.0 * (curbOffset + 0.35));
+            const hydZ = hz + normZ * (1.0 * (curbOffset + 0.35));
+
+            const hydGroup = new THREE.Group();
+            hydGroup.position.set(hydX, hy, hydZ);
+
+            const hBody = new THREE.Mesh(hydrantBodyGeom, hydrantMat);
+            hBody.position.y = 0.325;
+            hydGroup.add(hBody);
+
+            const hDome = new THREE.Mesh(hydrantDomeGeom, hydrantMat);
+            hDome.position.y = 0.65;
+            hydGroup.add(hDome);
+
+            const hNozzle = new THREE.Mesh(hydrantNozzleGeom, hydrantCapMat);
+            hNozzle.position.y = 0.45;
+            hNozzle.rotation.z = Math.PI / 2.0;
+            hydGroup.add(hNozzle);
+
+            state.streetFurnitureGroup.add(hydGroup);
+        }
+    });
+
+    state.scene.add(state.streetFurnitureGroup);
 }
 
 function buildRainWeatherFX() {
@@ -3125,7 +3606,12 @@ function update3DFacilitiesStatus(depthGrid, snap) {
 
         if (obj.userData.category === "electrical_substations") {
             const isTripped = (opSubs < 3);
-            obj.material.color.setHex(isTripped ? 0xef4444 : 0x00f0ff);
+            if (obj.material) {
+                obj.material.color.setHex(isTripped ? 0xef4444 : 0x00f0ff);
+            }
+            if (obj.userData.indicatorMesh && obj.userData.indicatorMesh.material) {
+                obj.userData.indicatorMesh.material.color.setHex(isTripped ? 0xef4444 : 0x00f0ff);
+            }
             if (obj.userData.badge) {
                 obj.userData.badge.material.color.setHex(isTripped ? 0xef4444 : 0x00f0ff);
             }
@@ -3332,6 +3818,25 @@ function applyAtmosphereUpdate(dt) {
             });
         });
     }
+
+    // 7. Streetlight LED Luminaire Glow & Localized Night Light Pools
+    if (state.streetlightLensMat) {
+        const isNight = (state.weatherMode === "night" || wf < -0.5);
+        let streetInt = 0.0;
+        if (isNight) {
+            streetInt = 0.95;
+        } else if (wf > 0.35) {
+            streetInt = Math.min(0.90, (wf - 0.35) * 2.2);
+        }
+        state.streetlightLensMat.emissiveIntensity = streetInt;
+
+        if (state.streetlightLocalLights && state.streetlightLocalLights.length > 0) {
+            const lightVal = streetInt * 1.35;
+            for (let i = 0; i < state.streetlightLocalLights.length; i++) {
+                state.streetlightLocalLights[i].intensity = lightVal;
+            }
+        }
+    }
 }
 
 
@@ -3387,6 +3892,26 @@ function animate() {
         const beaconColor = isBeaconFlash ? 0xff2222 : 0x330505;
         for (let i = 0; i < state.aviationBeacons.length; i++) {
             state.aviationBeacons[i].material.color.setHex(beaconColor);
+        }
+    }
+
+    // 4b. Pulse Rooftop Helipad Perimeter Runway Beacons
+    if (state.helipadBeacons && state.helipadBeacons.length > 0) {
+        const isPadFlash = (elapsedTime % 1.2) < 0.6;
+        for (let i = 0; i < state.helipadBeacons.length; i++) {
+            const isEven = (i % 2 === 0);
+            if (isPadFlash) {
+                state.helipadBeacons[i].material.color.setHex(isEven ? 0x10b981 : 0xf8fafc);
+            } else {
+                state.helipadBeacons[i].material.color.setHex(isEven ? 0x064e3b : 0x475569);
+            }
+        }
+    }
+
+    // 4c. Spin Pumping Station Strobe Warning Beacons
+    if (state.pumpingBeacons && state.pumpingBeacons.length > 0) {
+        for (let i = 0; i < state.pumpingBeacons.length; i++) {
+            state.pumpingBeacons[i].rotation.y += dt * 5.0;
         }
     }
 
@@ -3569,6 +4094,7 @@ function setupEventListeners() {
     setupLayerToggle("chkTraffic", () => state.trafficGroup);
     setupLayerToggle("chkRoads", () => state.roadLinesGroup);
     setupLayerToggle("chkBuildings", () => state.buildingsGroup);
+    setupLayerToggle("chkFurniture", () => state.streetFurnitureGroup);
     setupLayerToggle("chkFacilities", () => state.facilitiesGroup);
     setupLayerToggle("chkRain", () => state.rainSystem);
 
