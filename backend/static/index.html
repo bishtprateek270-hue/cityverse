@@ -226,14 +226,18 @@
                     </div>
                     <div class="branch-controls">
                         <div class="active-branch-badge">
-                            TIMELINE: <strong id="currentBranchDisplay">baseline</strong>
+                            ACTIVE TIMELINE: <strong id="currentBranchDisplay">baseline</strong>
+                        </div>
+                        <div class="toggle-group" style="margin-bottom: 8px;">
+                            <button id="btnSwitchBaseline" class="toggle-btn active" title="View Baseline Scenario">Baseline</button>
+                            <button id="btnSwitchBranchB" class="toggle-btn" disabled title="View Intervention Branch B">Branch B</button>
                         </div>
                         <div class="btn-group-column">
-                            <button id="btnForkBranch" class="btn btn-secondary btn-sm btn-full">
-                                FORK INTERVENTION (BRANCH B)
+                            <button id="btnForkBranch" class="btn btn-secondary btn-sm btn-full" title="Create counterfactual branch with intervention">
+                                🔀 FORK INTERVENTION (BRANCH B)
                             </button>
-                            <button id="btnCompareBranches" class="btn btn-ghost btn-sm btn-full" disabled>
-                                COMPARE BASELINE vs BRANCH B
+                            <button id="btnCompareBranches" class="btn btn-accent btn-sm btn-full" disabled title="Quantitatively compare Baseline vs Branch B">
+                                ⚖ COMPARE BASELINE vs BRANCH B
                             </button>
                         </div>
                     </div>
@@ -342,6 +346,40 @@
                 </div>
             </div>
         </aside>
+        <!-- FLOATING COUNTERFACTUAL COMPARISON MODAL -->
+        <div id="compareModal" class="compare-modal hidden">
+            <div class="compare-modal-content">
+                <div class="compare-modal-header">
+                    <span class="compare-modal-title">⚖ COUNTERFACTUAL AUDIT: BASELINE vs BRANCH B</span>
+                    <button id="btnCloseCompareModal" class="btn-icon-close" title="Close Modal">&times;</button>
+                </div>
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <span class="compare-label">SURFACE FLOODING (&gt;15cm)</span>
+                        <span id="modalDiffFlood" class="compare-value val-accent">--</span>
+                        <span class="compare-sub">Inundated urban area difference</span>
+                    </div>
+                    <div class="compare-card">
+                        <span class="compare-label">AVG EMS TRAUMA LATENCY</span>
+                        <span id="modalDiffEms" class="compare-value val-accent">--</span>
+                        <span class="compare-sub">Hospital transit delay impact</span>
+                    </div>
+                    <div class="compare-card">
+                        <span class="compare-label">IMPASSABLE ROADWAYS</span>
+                        <span id="modalDiffRoads" class="compare-value val-accent">--</span>
+                        <span class="compare-sub">Severe ponding network cutoffs</span>
+                    </div>
+                    <div class="compare-card">
+                        <span class="compare-label">MEAN DEPTH MITIGATION</span>
+                        <span id="modalDiffDepth" class="compare-value val-accent">--</span>
+                        <span class="compare-sub">Overland surface water drawdown</span>
+                    </div>
+                </div>
+                <div id="modalRecommendation" class="diff-badge badge-success" style="margin-top: 12px; font-size: 11px;">
+                    Evaluating countermeasure effectiveness...
+                </div>
+            </div>
+        </div>
     </main>
 
     <script src="vendor/three/three.min.js"></script>

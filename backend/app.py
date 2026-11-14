@@ -556,6 +556,44 @@ def fork_branch(req: ForkRequest):
 @app.post("/api/branch/compare")
 def compare_branches(req: CompareRequest):
     try:
+        frames_a = timeline_cache.get_all_frames(req.branch_a_id)
+        frames_b = timeline_cache.get_all_frames(req.branch_b_id)
+        
+        if frames_a and frames_b:
+            fa = frames_a[-1]
+            fb = frames_b[-1]
+            snap_a = fa.get("snapshot", {})
+            snap_b = fb.get("snapshot", {})
+            
+            grid_a = np.array(fa.get("surface_depth_grid", []), dtype=np.float32)
+            grid_b = np.array(fb.get("surface_depth_grid", []), dtype=np.float32)
+            if grid_a.shape == grid_b.shape and grid_a.size > 0:
+                h_diff = (grid_b - grid_a).astype(np.float32)
+                mean_reduction = float(np.mean(grid_a) - np.mean(grid_b))
+            else:
+                h_diff = np.zeros((1, 1), dtype=np.float32)
+                mean_reduction = 0.0
+
+            delta_flood = float(snap_b.get("flooded_area_km2_gt15cm", 0.0) - snap_a.get("flooded_area_km2_gt15cm", 0.0))
+            delta_ems = float(snap_b.get("avg_ems_response_min", 0.0) - snap_a.get("avg_ems_response_min", 0.0))
+            delta_subs = int(snap_b.get("operational_substations", 3) - snap_a.get("operational_substations", 3))
+            delta_roads = int(snap_b.get("closed_roads_passenger", 0) - snap_a.get("closed_roads_passenger", 0))
+
+            is_better = (mean_reduction > 1e-4) or (delta_flood < -0.001) or (delta_ems < -0.05) or (delta_roads < 0) or (delta_subs > 0)
+
+            return {
+                "branch_a": req.branch_a_id,
+                "branch_b": req.branch_b_id,
+                "time_s": fa.get("time_s", 0.0),
+                "delta_flooded_area_km2": delta_flood,
+                "delta_avg_ems_time_min": delta_ems,
+                "delta_operational_substations": delta_subs,
+                "delta_closed_roads_passenger": delta_roads,
+                "mean_depth_reduction_m": mean_reduction,
+                "spatial_depth_diff_grid": h_diff.tolist(),
+                "is_branch_b_better": bool(is_better),
+            }
+
         diff = branch_engine.compare_branches(req.branch_a_id, req.branch_b_id)
         # Convert numpy array to list for JSON serialization
         diff_payload = dict(diff)

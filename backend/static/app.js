@@ -135,7 +135,11 @@ const modePhysicsBtn = document.getElementById("modePhysics");
 // Branching
 const btnFork = document.getElementById("btnForkBranch");
 const btnCompare = document.getElementById("btnCompareBranches");
+const btnSwitchBaseline = document.getElementById("btnSwitchBaseline");
+const btnSwitchBranchB = document.getElementById("btnSwitchBranchB");
 const diffSection = document.getElementById("diffSection");
+const compareModal = document.getElementById("compareModal");
+const btnCloseCompareModal = document.getElementById("btnCloseCompareModal");
 
 let sliderDebounceTimer = null;
 
@@ -3366,6 +3370,34 @@ function createCarMesh(colorHex) {
     return group;
 }
 
+function relocateVehicleToDryRoad(veh) {
+    if (!state.roadGraph) return;
+    const dryEdges = Object.values(state.roadGraph).filter(e => !e.isClosed && (e.waterDepth || 0.0) < 0.08);
+    const pool = dryEdges.length > 0 ? dryEdges : Object.values(state.roadGraph).filter(e => !e.isClosed && (e.waterDepth || 0.0) < 0.15);
+    if (pool.length === 0) return;
+    const target = pool[Math.floor(Math.random() * pool.length)];
+    veh.edgeId = target.id;
+    veh.t = 0.05 + Math.random() * 0.40;
+    veh.currentSpeed = veh.baseSpeed * 0.80;
+    veh.isStalled = false;
+    veh.waitingTimer = 0;
+}
+
+function relocateEmergencyVehicleToArterial(veh) {
+    if (!state.roadGraph) return;
+    const openArterials = Object.values(state.roadGraph).filter(e => 
+        e.roadClass === "arterial" && !e.isClosed && (e.waterDepth || 0.0) < 0.18
+    );
+    const pool = openArterials.length > 0 ? openArterials : Object.values(state.roadGraph).filter(e => !e.isClosed && (e.waterDepth || 0.0) < 0.25);
+    if (pool.length === 0) return;
+    const target = pool[Math.floor(Math.random() * pool.length)];
+    veh.edgeId = target.id;
+    veh.t = 0.05 + Math.random() * 0.30;
+    veh.currentSpeed = veh.baseSpeed * 0.90;
+    veh.isStalled = false;
+    veh.waitingTimer = 0;
+}
+
 function updateTraffic(dt) {
     if (!state.trafficGroup || state.vehicles.length === 0) return;
 
@@ -3376,7 +3408,7 @@ function updateTraffic(dt) {
         laneGroups.get(veh.edgeId).push(veh);
     });
 
-    // 2. Intra-Lane Car-Following Model (Intelligent Driver Model & Emergency Siren Priority)
+    // 2. Intra-Lane Car-Following Model (Intelligent Driver Model & Siren Yielding)
     laneGroups.forEach((cars, edgeId) => {
         if (cars.length <= 1) return;
         const edge = state.roadGraph[edgeId];
@@ -3393,7 +3425,7 @@ function updateTraffic(dt) {
             const safeGap = follower.isEmergency ? 4.2 : 5.0;
             const stopGap = follower.isEmergency ? 3.0 : 3.4;
 
-            // If an emergency vehicle is approaching from behind, civilian car yields / pulls forward
+            // If an emergency vehicle is approaching from behind, civilian car yields
             if (follower.isEmergency && !leader.isEmergency && headwayDist < 12.0) {
                 leader.currentSpeed = Math.max(leader.currentSpeed, Math.min(leader.baseSpeed * 1.1, follower.currentSpeed));
             }
@@ -3404,8 +3436,17 @@ function updateTraffic(dt) {
 
                 if (headwayDist < stopGap) {
                     follower.currentSpeed = 0.0;
-                    const minGapT = stopGap / Math.max(10.0, edge.length);
-                    follower.t = Math.min(follower.t, leader.t - minGapT);
+                    const minGapT = (stopGap * 0.85) / Math.max(10.0, edge.length);
+                    if (follower.t > leader.t - minGapT) {
+                        follower.t = leader.t - minGapT;
+                    }
+                    if (leader.isStalled || (leader.waitingTimer && leader.waitingTimer > 1.2)) {
+                        follower.waitingTimer = (follower.waitingTimer || 0) + dt;
+                        if (follower.waitingTimer >= 2.5) {
+                            if (follower.isEmergency) relocateEmergencyVehicleToArterial(follower);
+                            else relocateVehicleToDryRoad(follower);
+                        }
+                    }
                 }
             }
         }
@@ -3417,7 +3458,6 @@ function updateTraffic(dt) {
         if (!edge) return;
 
         const water = edge.waterDepth || 0.0;
-        const clearance = veh.waterClearance || 0.15;
 
         // Hydrodynamic Passability & Hazard Reaction
         if (!veh.isEmergency) {
@@ -3425,55 +3465,46 @@ function updateTraffic(dt) {
             const isRoadClosed = edge.isClosed || (water >= 0.15);
 
             if (isRoadClosed) {
-                const approachingBarricade = (veh.t >= 0.78);
-                const facingWater = (water >= 0.15);
-
-                if (approachingBarricade || facingWater) {
-                    veh.currentSpeed = Math.max(0.0, veh.currentSpeed - 14.0 * dt);
-                    veh.waitingTimer += dt;
-
-                    // Smooth U-turn into reciprocal opposing lane to retreat back towards dry intersection
-                    if (veh.currentSpeed <= 0.3 || veh.waitingTimer > 0.4) {
-                        const returnEdgeId = state.reciprocalEdges[veh.edgeId];
-                        const returnEdge = returnEdgeId ? state.roadGraph[returnEdgeId] : null;
-
-                        if (returnEdge) {
-                            veh.edgeId = returnEdge.id;
-                            veh.t = npClamp(1.0 - veh.t, 0.05, 0.95);
-                            veh.currentSpeed = veh.baseSpeed * 0.55;
-                            veh.isStalled = false;
-                            veh.waitingTimer = 0;
-                            edge = returnEdge;
-                        } else {
-                            veh.isStalled = true;
-                        }
-                    } else {
-                        veh.isStalled = true;
-                    }
-                } else {
-                    veh.currentSpeed = Math.min(veh.baseSpeed * 0.70, veh.currentSpeed + 7.0 * dt);
-                    veh.isStalled = false;
-                    veh.waitingTimer = 0;
-                }
-
-                if (water >= 0.30) {
-                    veh.currentSpeed = 0.0;
-                    veh.isStalled = true;
-                }
+                veh.currentSpeed = Math.max(0.0, veh.currentSpeed - 14.0 * dt);
+                veh.waitingTimer = (veh.waitingTimer || 0) + dt;
+                veh.isStalled = true;
 
                 // Flash amber hazard lights while stalled
-                if (veh.isStalled && veh.mesh.userData.tailLights) {
+                if (veh.mesh.userData.tailLights) {
                     const blink = Math.floor(Date.now() / 320) % 2 === 0;
                     veh.mesh.userData.tailLights.material.color.setHex(blink ? 0xf59e0b : 0xef4444);
                 }
+
+                // If waiting/stalled for > 0.4s, attempt U-turn into reciprocal opposing lane
+                if (veh.waitingTimer > 0.4 && veh.waitingTimer < 2.5) {
+                    const returnEdgeId = state.reciprocalEdges[veh.edgeId];
+                    const returnEdge = returnEdgeId ? state.roadGraph[returnEdgeId] : null;
+
+                    if (returnEdge && !returnEdge.isClosed && (returnEdge.waterDepth || 0.0) < 0.15) {
+                        veh.edgeId = returnEdge.id;
+                        veh.t = npClamp(1.0 - veh.t, 0.05, 0.95);
+                        veh.currentSpeed = veh.baseSpeed * 0.60;
+                        veh.isStalled = false;
+                        veh.waitingTimer = 0;
+                        edge = returnEdge;
+                    }
+                }
+
+                // CRUCIAL ANTI-LAG & ANTI-GRIDLOCK WATCHDOG:
+                // If a vehicle is trapped in an impassable road or dead-end queue for > 2.8 seconds,
+                // relocate it to an active dry arterial road so cars never freeze or pile up!
+                if (veh.waitingTimer >= 2.8) {
+                    relocateVehicleToDryRoad(veh);
+                    return;
+                }
             } else if (water >= 0.05) {
-                // Shallow Ponding
-                veh.currentSpeed = Math.min(veh.currentSpeed, veh.baseSpeed * 0.50);
+                // Shallow Ponding: cautionary speed reduction (55% base speed)
+                veh.currentSpeed = Math.min(veh.baseSpeed * 0.55, veh.currentSpeed + 5.0 * dt);
                 veh.isStalled = false;
                 veh.waitingTimer = 0;
             } else {
-                // Free flow
-                if (veh.currentSpeed < veh.baseSpeed * 0.95) {
+                // Free flow on dry pavement
+                if (veh.currentSpeed < veh.baseSpeed) {
                     veh.currentSpeed = Math.min(veh.baseSpeed, veh.currentSpeed + 8.0 * dt);
                 }
                 veh.isStalled = false;
@@ -3481,33 +3512,34 @@ function updateTraffic(dt) {
             }
         } else {
             // Specialized Emergency Vehicles (Ambulances & Heavy Fire Engines)
-            const isRoadBlocked = edge.isClosed || (water >= 0.15);
+            const isRoadBlocked = edge.isClosed || (water >= 0.28);
 
             if (isRoadBlocked) {
-                // Obey red/blocked roads: execute immediate tactical U-turn detour away from flood barrier
                 veh.currentSpeed = Math.max(0.0, veh.currentSpeed - 16.0 * dt);
-                veh.waitingTimer += dt;
+                veh.waitingTimer = (veh.waitingTimer || 0) + dt;
+                veh.isStalled = true;
 
-                if (veh.currentSpeed <= 0.4 || veh.waitingTimer > 0.3) {
+                if (veh.waitingTimer > 0.3 && veh.waitingTimer < 2.0) {
                     const returnEdgeId = state.reciprocalEdges[veh.edgeId];
                     const returnEdge = returnEdgeId ? state.roadGraph[returnEdgeId] : null;
 
-                    if (returnEdge && !returnEdge.isClosed && (returnEdge.waterDepth || 0.0) < 0.15) {
+                    if (returnEdge && !returnEdge.isClosed && (returnEdge.waterDepth || 0.0) < 0.28) {
                         veh.edgeId = returnEdge.id;
                         veh.t = npClamp(1.0 - veh.t, 0.05, 0.95);
                         veh.currentSpeed = veh.baseSpeed * 0.70;
                         veh.isStalled = false;
                         veh.waitingTimer = 0;
                         edge = returnEdge;
-                    } else {
-                        veh.currentSpeed = 0.0;
-                        veh.isStalled = true;
                     }
-                } else {
-                    veh.isStalled = true;
+                }
+
+                // Emergency Tactical Relocation if blocked by extreme flood barrier
+                if (veh.waitingTimer >= 2.2) {
+                    relocateEmergencyVehicleToArterial(veh);
+                    return;
                 }
             } else if (water >= 0.05) {
-                // Shallow ponding: careful emergency transit
+                // Shallow ponding: high-water emergency transit
                 veh.currentSpeed = Math.min(veh.baseSpeed * 0.75, veh.currentSpeed + 10.0 * dt);
                 veh.isStalled = false;
                 veh.waitingTimer = 0;
@@ -3531,12 +3563,12 @@ function updateTraffic(dt) {
             const oppEdgeId = state.reciprocalEdges[edge.id];
 
             if (!veh.isEmergency) {
-                // Civilian Passenger Cars: pick random open dry outgoing edge
+                // Civilian Passenger Cars: pick random open passable outgoing edge (< 0.15m water)
                 const availableOutgoing = Object.values(state.roadGraph).filter(e => 
                     e.u === hitNode && 
                     e.id !== oppEdgeId && 
                     !e.isClosed && 
-                    (e.waterDepth || 0.0) < 0.05
+                    (e.waterDepth || 0.0) < 0.15
                 );
 
                 if (availableOutgoing.length > 0) {
@@ -3549,25 +3581,31 @@ function updateTraffic(dt) {
                     edge = nextEdge;
                 } else {
                     const returnEdgeId = state.reciprocalEdges[edge.id];
-                    if (returnEdgeId) {
-                        veh.edgeId = returnEdgeId;
+                    const returnEdge = returnEdgeId ? state.roadGraph[returnEdgeId] : null;
+                    if (returnEdge && !returnEdge.isClosed && (returnEdge.waterDepth || 0.0) < 0.15) {
+                        veh.edgeId = returnEdge.id;
                         veh.t = 0.05;
-                        veh.currentSpeed = veh.baseSpeed * 0.5;
+                        veh.currentSpeed = veh.baseSpeed * 0.55;
                         veh.isStalled = false;
-                        edge = state.roadGraph[returnEdgeId];
+                        veh.waitingTimer = 0;
+                        edge = returnEdge;
                     } else {
                         veh.currentSpeed = 0.0;
                         veh.isStalled = true;
-                        veh.t = 0.98;
+                        veh.waitingTimer = (veh.waitingTimer || 0) + dt;
+                        if (veh.waitingTimer >= 2.0) {
+                            relocateVehicleToDryRoad(veh);
+                            return;
+                        }
                     }
                 }
             } else {
-                // Emergency Vehicles: Tactical Dynamic Dispatch strictly on OPEN / UNBLOCKED Roads
+                // Emergency Vehicles: Tactical Dynamic Dispatch on Open Roads (< 0.28m)
                 const passableOutgoing = Object.values(state.roadGraph).filter(e => 
                     e.u === hitNode && 
                     e.id !== oppEdgeId && 
                     !e.isClosed && 
-                    (e.waterDepth || 0.0) < 0.15
+                    (e.waterDepth || 0.0) < 0.28
                 );
 
                 // Update mission lifecycle
@@ -3622,16 +3660,21 @@ function updateTraffic(dt) {
                 } else {
                     const returnEdgeId = state.reciprocalEdges[edge.id];
                     const returnEdge = returnEdgeId ? state.roadGraph[returnEdgeId] : null;
-                    if (returnEdge && !returnEdge.isClosed && (returnEdge.waterDepth || 0.0) < 0.15) {
+                    if (returnEdge && !returnEdge.isClosed && (returnEdge.waterDepth || 0.0) < 0.28) {
                         veh.edgeId = returnEdge.id;
                         veh.t = 0.05;
-                        veh.currentSpeed = veh.baseSpeed * 0.65;
+                        veh.currentSpeed = veh.baseSpeed * 0.70;
                         veh.isStalled = false;
+                        veh.waitingTimer = 0;
                         edge = returnEdge;
                     } else {
                         veh.currentSpeed = 0.0;
                         veh.isStalled = true;
-                        veh.t = 0.98;
+                        veh.waitingTimer = (veh.waitingTimer || 0) + dt;
+                        if (veh.waitingTimer >= 2.0) {
+                            relocateEmergencyVehicleToArterial(veh);
+                            return;
+                        }
                     }
                 }
             }
@@ -3827,7 +3870,7 @@ async function runScenario(autoPlay = true, scrubToPeak = false) {
         console.error("Run scenario error:", err);
     } finally {
         elRunScenario.disabled = false;
-        document.getElementById("runScenarioLabel").innerText = "RUN SCENARIO (3 HR)";
+        document.getElementById("runScenarioLabel").innerText = `RUN SCENARIO (${duration.toFixed(1)} HR)`;
     }
 }
 
@@ -4434,7 +4477,9 @@ function setupEventListeners() {
         onSliderLiveChange();
     });
     sliderDuration.addEventListener("input", (e) => { 
-        valDuration.innerText = `${parseFloat(e.target.value).toFixed(1)} hrs`; 
+        const hrs = parseFloat(e.target.value).toFixed(1);
+        valDuration.innerText = `${hrs} hrs`; 
+        document.getElementById("runScenarioLabel").innerText = `RUN SCENARIO (${hrs} HR)`;
         onSliderLiveChange();
     });
     sliderDrain.addEventListener("input", (e) => { 
@@ -4461,6 +4506,9 @@ function setupEventListeners() {
     // Branching
     btnFork.addEventListener("click", handleForkScenario);
     btnCompare.addEventListener("click", handleCompareBranches);
+    if (btnSwitchBaseline) btnSwitchBaseline.addEventListener("click", () => handleSwitchBranch("baseline"));
+    if (btnSwitchBranchB) btnSwitchBranchB.addEventListener("click", () => handleSwitchBranch(state.forkedBranch || "intervention_branch_B"));
+    if (btnCloseCompareModal) btnCloseCompareModal.addEventListener("click", () => compareModal.classList.add("hidden"));
 
     // 3D Layer Checkboxes
     setupLayerToggle("chkWater", () => state.waterMesh);
@@ -4727,8 +4775,24 @@ function handle3DClick(e) {
 async function handleForkScenario() {
     const branchName = `intervention_branch_B`;
     try {
+        btnFork.disabled = true;
+        btnFork.innerText = "FORKING BRANCH B...";
+
+        // If user hasn't changed sliders from the baseline default (60% drainage),
+        // apply a proactive municipal intervention for Branch B:
+        // Set drainage capacity to 100% (unblock storm drains!) and pumps to 100%
+        if (parseFloat(sliderDrain.value) <= 60.0) {
+            sliderDrain.value = 100;
+            valDrain.innerText = "100% (0% Blocked)";
+        }
+        sliderPump1.value = 100;
+        valPump1.innerText = "100%";
+        sliderPump2.value = 100;
+        valPump2.innerText = "100%";
+
         const p1 = parseFloat(sliderPump1.value) / 100.0;
         const p2 = parseFloat(sliderPump2.value) / 100.0;
+        const drain = parseFloat(sliderDrain.value) / 100.0;
 
         const res = await fetch("/api/branch/fork", {
             method: "POST",
@@ -4738,7 +4802,7 @@ async function handleForkScenario() {
                 new_branch_id: branchName,
                 intervention: {
                     pump_overrides: { "PUMP-1": p1, "PUMP-2": p2 },
-                    drainage_capacity_factor: parseFloat(sliderDrain.value) / 100.0
+                    drainage_capacity_factor: drain
                 }
             })
         });
@@ -4746,7 +4810,15 @@ async function handleForkScenario() {
         if (res.ok) {
             state.forkedBranch = branchName;
             state.currentBranch = branchName;
-            document.getElementById("currentBranchDisplay").innerText = branchName;
+            document.getElementById("currentBranchDisplay").innerText = "Branch B (Intervention)";
+
+            if (btnSwitchBranchB) {
+                btnSwitchBranchB.disabled = false;
+                btnSwitchBranchB.classList.add("active");
+            }
+            if (btnSwitchBaseline) {
+                btnSwitchBaseline.classList.remove("active");
+            }
             btnCompare.disabled = false;
             btnFork.innerText = "RE-FORK BRANCH B";
 
@@ -4755,6 +4827,43 @@ async function handleForkScenario() {
         }
     } catch (err) {
         console.error("Fork error:", err);
+    } finally {
+        btnFork.disabled = false;
+    }
+}
+
+async function handleSwitchBranch(targetBranch) {
+    if (targetBranch === state.currentBranch) return;
+    try {
+        state.currentBranch = targetBranch;
+        document.getElementById("currentBranchDisplay").innerText = (targetBranch === "baseline") ? "baseline" : "Branch B (Intervention)";
+
+        if (targetBranch === "baseline") {
+            if (btnSwitchBaseline) btnSwitchBaseline.classList.add("active");
+            if (btnSwitchBranchB) btnSwitchBranchB.classList.remove("active");
+        } else {
+            if (btnSwitchBranchB) btnSwitchBranchB.classList.add("active");
+            if (btnSwitchBaseline) btnSwitchBaseline.classList.remove("active");
+        }
+
+        const fRes = await fetch(`/api/simulation/frames_all?branch_id=${targetBranch}`);
+        if (fRes.ok) {
+            const data = await fRes.json();
+            state.frames = data.frames;
+            state.totalSteps = data.total_frames - 1;
+            elTimelineScrubber.max = state.totalSteps;
+
+            if (data.summary) {
+                state.historyFloodedArea = data.summary.flooded_area_km2_series;
+                state.historyEmsTime = data.summary.ems_time_min_series;
+                updateSparklines();
+            }
+
+            const step = Math.min(state.currentStepIdx || 0, state.totalSteps);
+            scrubToStep(step);
+        }
+    } catch (err) {
+        console.error("Error switching branch:", err);
     }
 }
 
@@ -4762,6 +4871,7 @@ async function handleCompareBranches() {
     if (!state.forkedBranch) return;
 
     try {
+        btnCompare.disabled = true;
         const res = await fetch("/api/branch/compare", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -4774,25 +4884,64 @@ async function handleCompareBranches() {
         if (!res.ok) throw new Error("Compare failed");
         const diff = await res.json();
 
+        // 1. Expand right telemetry panel if it's currently collapsed
+        const rightPanel = document.getElementById("rightPanel");
+        if (rightPanel && rightPanel.classList.contains("collapsed")) {
+            rightPanel.classList.remove("collapsed");
+            const tabArrow = rightPanel.querySelector(".tab-arrow");
+            if (tabArrow) tabArrow.innerText = "▶";
+        }
+
+        // 2. Populate diff card in right panel
         diffSection.classList.remove("hidden");
-        document.getElementById("diffFloodArea").innerText = `${diff.delta_flooded_area_km2 > 0 ? '+' : ''}${diff.delta_flooded_area_km2.toFixed(3)} km²`;
-        document.getElementById("diffFloodArea").className = diff.delta_flooded_area_km2 < 0 ? "val-success" : "val-danger";
+        const deltaFloodStr = `${diff.delta_flooded_area_km2 > 0 ? '+' : ''}${diff.delta_flooded_area_km2.toFixed(3)} km²`;
+        const deltaEmsStr = `${diff.delta_avg_ems_time_min > 0 ? '+' : ''}${diff.delta_avg_ems_time_min.toFixed(2)} min`;
+        const deltaRoadsStr = `${diff.delta_closed_roads_passenger > 0 ? '+' : ''}${diff.delta_closed_roads_passenger}`;
+        const meanDepthStr = `${diff.mean_depth_reduction_m > 0 ? '-' : '+'}${Math.abs(diff.mean_depth_reduction_m * 100.0).toFixed(2)} cm`;
 
-        document.getElementById("diffEmsTime").innerText = `${diff.delta_avg_ems_time_min > 0 ? '+' : ''}${diff.delta_avg_ems_time_min.toFixed(2)} min`;
-        document.getElementById("diffEmsTime").className = diff.delta_avg_ems_time_min < 0 ? "val-success" : "val-danger";
+        document.getElementById("diffFloodArea").innerText = deltaFloodStr;
+        document.getElementById("diffFloodArea").className = diff.delta_flooded_area_km2 <= 0 ? "val-success" : "val-danger";
 
-        document.getElementById("diffClosedRoads").innerText = `${diff.delta_closed_roads_passenger > 0 ? '+' : ''}${diff.delta_closed_roads_passenger}`;
+        document.getElementById("diffEmsTime").innerText = deltaEmsStr;
+        document.getElementById("diffEmsTime").className = diff.delta_avg_ems_time_min <= 0 ? "val-success" : "val-danger";
+
+        document.getElementById("diffClosedRoads").innerText = deltaRoadsStr;
+        document.getElementById("diffClosedRoads").className = diff.delta_closed_roads_passenger <= 0 ? "val-success" : "val-danger";
 
         const recBadge = document.getElementById("diffRecommendation");
-        if (diff.is_branch_b_better) {
-            recBadge.innerText = "COUNTERMEASURE RECOMMENDED: Municipal drainage upgrades & pump station operations reduced flood inundation and preserved emergency trauma routes!";
-            recBadge.className = "diff-badge badge-success";
-        } else {
-            recBadge.innerText = "NEGLIGIBLE IMPACT: Municipal controls insufficient to arrest basin inundation.";
-            recBadge.className = "diff-badge badge-warning";
+        const recText = diff.is_branch_b_better 
+            ? "COUNTERMEASURE RECOMMENDED: Municipal drainage upgrades & pump station operations reduced flood inundation and preserved emergency trauma routes!"
+            : "NEGLIGIBLE IMPACT: Municipal controls insufficient to arrest basin inundation.";
+        recBadge.innerText = recText;
+        recBadge.className = diff.is_branch_b_better ? "diff-badge badge-success" : "diff-badge badge-warning";
+
+        // 3. Populate and display floating compare modal on screen
+        if (compareModal) {
+            compareModal.classList.remove("hidden");
+            document.getElementById("modalDiffFlood").innerText = deltaFloodStr;
+            document.getElementById("modalDiffFlood").className = `compare-value ${diff.delta_flooded_area_km2 <= 0 ? 'val-success' : 'val-danger'}`;
+
+            document.getElementById("modalDiffEms").innerText = deltaEmsStr;
+            document.getElementById("modalDiffEms").className = `compare-value ${diff.delta_avg_ems_time_min <= 0 ? 'val-success' : 'val-danger'}`;
+
+            document.getElementById("modalDiffRoads").innerText = deltaRoadsStr;
+            document.getElementById("modalDiffRoads").className = `compare-value ${diff.delta_closed_roads_passenger <= 0 ? 'val-success' : 'val-danger'}`;
+
+            document.getElementById("modalDiffDepth").innerText = meanDepthStr;
+            document.getElementById("modalDiffDepth").className = `compare-value ${diff.mean_depth_reduction_m >= 0 ? 'val-success' : 'val-danger'}`;
+
+            const modalRec = document.getElementById("modalRecommendation");
+            if (modalRec) {
+                modalRec.innerText = recText;
+                modalRec.className = diff.is_branch_b_better ? "diff-badge badge-success" : "diff-badge badge-warning";
+            }
         }
+
+        diffSection.scrollIntoView({ behavior: "smooth" });
     } catch (err) {
         console.error("Compare error:", err);
+    } finally {
+        btnCompare.disabled = false;
     }
 }
 
