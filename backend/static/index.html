@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CityVerse | Geographic Urban Digital Twin</title>
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,7 +26,7 @@
             </div>
             <div class="stat-badge">
                 <span class="label">DYNAMICS ENGINE</span>
-                <span id="engineBadge" class="val val-accent">NEURAL WORLD MODEL (2ms)</span>
+                <span id="engineBadge" class="val val-success">COUPLED 2D PHYSICS (Exact)</span>
             </div>
             <div class="stat-badge">
                 <span class="label">SIMULATION CLOCK</span>
@@ -132,8 +133,8 @@
                     <span class="icon">🧠</span> DYNAMICS ENGINE
                 </div>
                 <div class="toggle-group">
-                    <button id="modeNeural" class="toggle-btn active">Neural World Model (2ms)</button>
-                    <button id="modePhysics" class="toggle-btn">Coupled 2D Physics</button>
+                    <button id="modePhysics" class="toggle-btn active">Coupled 2D Physics (Exact)</button>
+                    <button id="modeNeural" class="toggle-btn">Neural World Model (2ms)</button>
                 </div>
             </div>
         </aside>
@@ -143,20 +144,29 @@
             <!-- Geographical Map Header Toolbar -->
             <div class="map-toolbar">
                 <div class="map-title-badge">
-                    <span class="icon">🗺️</span> GEOGRAPHICAL TOP-DOWN TWIN
+                    <span class="icon">🗺️</span> GEOGRAPHICAL URBAN TWIN
                 </div>
+                
+                <div class="basemap-selector">
+                    <span class="bm-label">BASEMAP:</span>
+                    <button id="bmDark" class="bm-btn active" title="CartoDB Dark Matter">Dark GIS</button>
+                    <button id="bmSatellite" class="bm-btn" title="ESRI High-Res World Imagery">Satellite</button>
+                    <button id="bmStreet" class="bm-btn" title="CartoDB Voyager Streets">Street Map</button>
+                </div>
+
                 <div class="layer-toggles">
-                    <label><input type="checkbox" id="chkWater" checked> Inundation Depth</label>
-                    <label><input type="checkbox" id="chkRoads" checked> Road Accessibility</label>
-                    <label><input type="checkbox" id="chkBlocks" checked> Urban Blocks</label>
-                    <label><input type="checkbox" id="chkFootprints" checked> Building Footprints</label>
-                    <label><input type="checkbox" id="chkHillshade" checked> Terrain Relief</label>
+                    <label><input type="checkbox" id="chkWater" checked> Flood Depth</label>
+                    <label><input type="checkbox" id="chkRoads" checked> Road Network</label>
+                    <label><input type="checkbox" id="chkRiver" checked> River System</label>
+                    <label><input type="checkbox" id="chkFootprints" checked> Buildings</label>
+                    <label><input type="checkbox" id="chkBlocks" checked> Zoning</label>
+                    <label><input type="checkbox" id="chkContours" checked> Topo Contours</label>
                     <label><input type="checkbox" id="chkFacilities" checked> Critical Facilities</label>
                 </div>
             </div>
 
-            <div class="canvas-container" id="canvasContainer">
-                <canvas id="cityCanvas" width="1000" height="1000"></canvas>
+            <div class="map-container" id="mapContainer">
+                <div id="cityMap"></div>
 
                 <!-- Scientific Hydrologic Map Legend -->
                 <div class="canvas-overlay map-legend">
@@ -164,7 +174,7 @@
                     <div class="legend-item"><span class="legend-color color-water-shallow"></span> Shallow Ponding (0.05m - 0.15m)</div>
                     <div class="legend-item"><span class="legend-color color-water-moderate"></span> Passenger Road Stall (0.15m - 0.30m)</div>
                     <div class="legend-item"><span class="legend-color color-water-deep"></span> Emergency Cutoff (&gt;0.30m)</div>
-                    <div class="legend-item"><span class="legend-color color-river"></span> River & Drainage Outfalls</div>
+                    <div class="legend-item"><span class="legend-color color-river"></span> River Channel & Bayou Basin</div>
                     <div class="legend-item"><span class="legend-color color-road-open"></span> Open Road Segment</div>
                     <div class="legend-item"><span class="legend-color color-road-slow"></span> Speed Degraded (Pregnolato)</div>
                     <div class="legend-item"><span class="legend-color color-road-closed"></span> Closed / Impassable Road</div>
@@ -299,6 +309,7 @@
         </aside>
     </main>
 
+    <script src="vendor/leaflet/leaflet.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

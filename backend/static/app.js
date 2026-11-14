@@ -2,33 +2,44 @@
  * CityVerse Web Application Frontend Logic
  * Realistic Geography-Based Urban Digital Twin
  * 
- * Features:
- * - Top-down analytical GIS map with DEM hillshading and hypsometric terrain relief.
- * - Road hierarchy (Highways, Arterials, Local streets, River bridges) with dynamic passability.
- * - Non-abstract urban block parcels and architectural building footprints with zoning.
- * - Continuous hydrodynamic flood inundation raster layer with physical depth thresholds.
- * - Interactive bottom timeline scrubber for exploring 3-hour storm evolution.
- * - NLP scenario parser and counterfactual branch comparator.
+ * Powered by Leaflet.js Cartographic Basemaps & Vectorized 2D Hydrodynamic Physics.
  */
 
-// Global State Container
+// Application State Container
 const state = {
     isPlaying: false,
     playTimer: null,
     currentStepIdx: 0,
     totalSteps: 36,
     stepDtSeconds: 300.0, // 5 minutes per step
-    engineMode: "world_model", // "world_model" or "physics"
+    engineMode: "physics", // Default to exact numerical physics
     currentBranch: "baseline",
     forkedBranch: null,
 
-    // GIS Layers
-    terrain: null,
-    hillshade: null,
-    blocks: [],
-    footprints: [],
-    roads: [],
-    facilities: [],
+    // Leaflet Map & Layer References
+    map: null,
+    baseLayers: {},
+    activeBaseLayer: null,
+    floodOverlay: null,
+    riverLayer: null,
+    roadsLayer: null,
+    facilitiesLayer: null,
+    blocksLayer: null,
+    footprintsLayer: null,
+    contoursLayer: null,
+
+    // GeoJSON Data Caches
+    riverGeo: null,
+    roadsGeo: null,
+    facilitiesGeo: null,
+    blocksGeo: null,
+    footprintsGeo: null,
+    contoursGeo: null,
+    geoBounds: null,
+
+    // Offscreen Canvas for Fast Flood Raster Interpolation
+    floodCanvas: null,
+    floodCtx: null,
 
     // Active Simulation Trajectory Cache
     frames: [],
@@ -39,9 +50,12 @@ const state = {
     historyEmsTime: [],
 };
 
-// Canvas references
-const canvas = document.getElementById("cityCanvas");
-const ctx = canvas.getContext("2d");
+// Geographical Coordinates Extent for MetroVerdia (Buffalo Bayou / Houston Domain)
+const GEO_BOUNDS = [
+    [29.7200, -95.4000],  // Southwest corner [lat, lon]
+    [29.77412, -95.33792] // Northeast corner [lat, lon]
+];
+const GEO_CENTER = [29.74706, -95.36896];
 
 // DOM References
 const elSimTime = document.getElementById("simTimeDisplay");
@@ -107,62 +121,30 @@ const kpiPumps = document.getElementById("kpiPumps");
 const kpiPumpStatus = document.getElementById("kpiPumpStatus");
 
 
-// --- Application Initialization ---
+// =========================================================================
+// APPLICATION INITIALIZATION
+// =========================================================================
 
 async function init() {
     try {
-        console.log("Initializing CityVerse Geographical Digital Twin...");
+        console.log("Initializing CityVerse Geographical Digital Twin with Leaflet.js...");
 
-        // 1. Fetch Terrain Elevation & River
-        const terrainRes = await fetch("/api/city/terrain");
-        state.terrain = await terrainRes.json();
+        // Setup offscreen canvas for continuous flood raster rendering (240x240 interpolated)
+        state.floodCanvas = document.createElement("canvas");
+        state.floodCanvas.width = 240;
+        state.floodCanvas.height = 240;
+        state.floodCtx = state.floodCanvas.getContext("2d");
 
-        // 2. Fetch Analytical Hillshade Layer
-        try {
-            const hsRes = await fetch("/api/city/hillshade");
-            if (hsRes.ok) {
-                const hsData = await hsRes.json();
-                state.hillshade = hsData.hillshade_grid;
-            }
-        } catch (e) {
-            console.warn("Could not load hillshade:", e);
-        }
+        // 1. Initialize Leaflet Map
+        initLeafletMap();
 
-        // 3. Fetch Road Network
-        const roadsRes = await fetch("/api/city/roads");
-        const roadsGeo = await roadsRes.json();
-        state.roads = roadsGeo.features || [];
+        // 2. Fetch and Load Geographic Vector Layers
+        await loadGeographicLayers();
 
-        // 4. Fetch Critical Facilities
-        const facRes = await fetch("/api/city/facilities");
-        const facGeo = await facRes.json();
-        state.facilities = facGeo.features || [];
-
-        // 5. Fetch Urban Blocks & Footprints
-        try {
-            const blocksRes = await fetch("/api/city/blocks");
-            if (blocksRes.ok) {
-                const bdata = await blocksRes.json();
-                state.blocks = bdata.features || [];
-            }
-        } catch (e) {
-            console.warn("Could not load blocks:", e);
-        }
-
-        try {
-            const fpRes = await fetch("/api/city/footprints");
-            if (fpRes.ok) {
-                const fpData = await fpRes.json();
-                state.footprints = fpData.features || [];
-            }
-        } catch (e) {
-            console.warn("Could not load footprints:", e);
-        }
-
-        // Setup UI event listeners
+        // 3. Setup UI Event Listeners
         setupEventListeners();
 
-        // Run default scenario (120 mm/hr, 3 hr, 60% capacity) to populate timeline
+        // 4. Run baseline 3-hour storm scenario (120 mm/hr, 60% drainage)
         await runScenario(false);
 
         console.log("CityVerse initialized successfully.");
@@ -172,7 +154,287 @@ async function init() {
 }
 
 
-// --- Scenario Execution & Timeline Rollouts ---
+// =========================================================================
+// LEAFLET MAP & BASEMAP CONFIGURATION
+// =========================================================================
+
+function initLeafletMap() {
+    state.map = L.map("cityMap", {
+        center: GEO_CENTER,
+        zoom: 13,
+        minZoom: 11,
+        maxZoom: 17,
+        zoomControl: true,
+        attributionControl: false
+    });
+
+    // Basemap Providers
+    state.baseLayers = {
+        dark: L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+            maxZoom: 19,
+            subdomains: "abcd"
+        }),
+        satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+            maxZoom: 19
+        }),
+        street: L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+            maxZoom: 19,
+            subdomains: "abcd"
+        })
+    };
+
+    // Default to Dark GIS Basemap
+    state.activeBaseLayer = state.baseLayers.dark;
+    state.activeBaseLayer.addTo(state.map);
+
+    // Initial Empty Flood Image Overlay
+    const emptyDataUrl = state.floodCanvas.toDataURL();
+    state.floodOverlay = L.imageOverlay(emptyDataUrl, GEO_BOUNDS, {
+        opacity: 0.85,
+        interactive: false,
+        zIndex: 400
+    }).addTo(state.map);
+
+    // Add Scale Bar
+    L.control.scale({ imperial: false, metric: true, position: "bottomright" }).addTo(state.map);
+
+    // Map Mouse Move Inspector
+    state.map.on("mousemove", handleMapMouseMove);
+    state.map.on("mouseout", () => inspectorCard.classList.add("hidden"));
+}
+
+function setBasemap(type) {
+    if (!state.baseLayers[type]) return;
+
+    if (state.activeBaseLayer) {
+        state.map.removeLayer(state.activeBaseLayer);
+    }
+    state.activeBaseLayer = state.baseLayers[type];
+    state.activeBaseLayer.addTo(state.map);
+    state.activeBaseLayer.bringToBack();
+
+    // Update button states
+    ["bmDark", "bmSatellite", "bmStreet"].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.remove("active");
+    });
+    if (type === "dark") document.getElementById("bmDark").classList.add("active");
+    if (type === "satellite") document.getElementById("bmSatellite").classList.add("active");
+    if (type === "street") document.getElementById("bmStreet").classList.add("active");
+}
+
+
+// =========================================================================
+// GEOGRAPHIC VECTOR LAYERS (WGS84 GeoJSON)
+// =========================================================================
+
+async function loadGeographicLayers() {
+    // 1. River / Bayou System Layer
+    try {
+        const res = await fetch("/api/city/geo/river");
+        if (res.ok) {
+            state.riverGeo = await res.json();
+            state.riverLayer = L.geoJSON(state.riverGeo, {
+                style: {
+                    color: "#0284c7",
+                    weight: 2,
+                    fillColor: "#0369a1",
+                    fillOpacity: 0.85
+                },
+                onEachFeature: (feature, layer) => {
+                    layer.bindPopup(`<strong>${feature.properties.name || "Central River Channel"}</strong><br>Hydrologic Basin: Alluvial Floodplain`);
+                }
+            }).addTo(state.map);
+        }
+    } catch (e) {
+        console.warn("Could not load river GeoJSON:", e);
+    }
+
+    // 2. Urban Blocks (Zoning Parcels)
+    try {
+        const res = await fetch("/api/city/geo/blocks");
+        if (res.ok) {
+            state.blocksGeo = await res.json();
+            state.blocksLayer = L.geoJSON(state.blocksGeo, {
+                style: (feature) => {
+                    const color = feature.properties.color || "#38bdf8";
+                    return {
+                        color: color,
+                        weight: 1,
+                        opacity: 0.4,
+                        fillColor: color,
+                        fillOpacity: 0.12
+                    };
+                },
+                onEachFeature: (feature, layer) => {
+                    const p = feature.properties;
+                    layer.bindTooltip(`<strong>${p.district}</strong><br>Zoning: ${p.zoning}<br>Area: ${(p.area_m2 / 10000).toFixed(1)} ha`, { sticky: true });
+                }
+            }).addTo(state.map);
+        }
+    } catch (e) {
+        console.warn("Could not load blocks GeoJSON:", e);
+    }
+
+    // 3. 2.5D Building Footprints
+    try {
+        const res = await fetch("/api/city/geo/footprints");
+        if (res.ok) {
+            state.footprintsGeo = await res.json();
+            state.footprintsLayer = L.geoJSON(state.footprintsGeo, {
+                style: (feature) => {
+                    const z = feature.properties.zoning;
+                    let fill = "#1e293b";
+                    if (z === "commercial_high") fill = "#0f172a";
+                    else if (z === "industrial_heavy") fill = "#262626";
+                    return {
+                        color: "rgba(255, 255, 255, 0.2)",
+                        weight: 0.8,
+                        fillColor: fill,
+                        fillOpacity: 0.65
+                    };
+                },
+                onEachFeature: (feature, layer) => {
+                    const p = feature.properties;
+                    layer.bindPopup(`<strong>${p.use_type}</strong><br>Height: ${p.height_m.toFixed(1)}m (${p.stories} stories)<br>Elevation: ${p.ground_elev_m.toFixed(1)}m<br>District: ${p.district}`);
+                }
+            }).addTo(state.map);
+        }
+    } catch (e) {
+        console.warn("Could not load footprints GeoJSON:", e);
+    }
+
+    // 4. Topographic Elevation Contours
+    try {
+        const res = await fetch("/api/city/geo/contours");
+        if (res.ok) {
+            state.contoursGeo = await res.json();
+            state.contoursLayer = L.geoJSON(state.contoursGeo, {
+                style: (feature) => {
+                    const elev = feature.properties.elevation_m;
+                    const isIndex = (elev % 20 === 0);
+                    return {
+                        color: isIndex ? "#94a3b8" : "#475569",
+                        weight: isIndex ? 1.4 : 0.7,
+                        opacity: isIndex ? 0.6 : 0.35,
+                        dashArray: isIndex ? null : "3, 3"
+                    };
+                },
+                onEachFeature: (feature, layer) => {
+                    layer.bindTooltip(`Elevation: ${feature.properties.elevation_m}m MSL`, { sticky: true });
+                }
+            }).addTo(state.map);
+        }
+    } catch (e) {
+        console.warn("Could not load contours GeoJSON:", e);
+    }
+
+    // 5. Road Network with Dynamic Passability
+    try {
+        const res = await fetch("/api/city/geo/roads");
+        if (res.ok) {
+            state.roadsGeo = await res.json();
+            state.roadsLayer = L.geoJSON(state.roadsGeo, {
+                style: (feature) => getRoadStyle(feature, 0.0),
+                onEachFeature: (feature, layer) => {
+                    layer.on("click", () => handleRoadClick(feature, layer));
+                }
+            }).addTo(state.map);
+        }
+    } catch (e) {
+        console.warn("Could not load roads GeoJSON:", e);
+    }
+
+    // 6. Critical Facilities with Custom Markers
+    try {
+        const res = await fetch("/api/city/geo/facilities");
+        if (res.ok) {
+            state.facilitiesGeo = await res.json();
+            state.facilitiesLayer = L.geoJSON(state.facilitiesGeo, {
+                pointToLayer: (feature, latlng) => {
+                    const p = feature.properties;
+                    const icon = createFacilityIcon(p.category, false);
+                    return L.marker(latlng, { icon: icon });
+                },
+                onEachFeature: (feature, layer) => {
+                    const p = feature.properties;
+                    layer.bindPopup(`
+                        <div style="font-family: var(--font-sans); min-width: 180px;">
+                            <strong style="color: var(--accent-cyan); font-size: 13px;">${p.name}</strong><br>
+                            <span style="color: var(--text-muted); font-size: 10px; text-transform: uppercase;">${p.category.replace('_', ' ')}</span>
+                            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 6px 0;">
+                            <div>Elevation: <strong>${(p.elevation_m || 25.0).toFixed(1)} m</strong></div>
+                            <div>Flood Threshold: <strong>${(p.flood_vulnerability_threshold_m || 0.3).toFixed(2)} m</strong></div>
+                            <div>Capacity: <strong>${p.capacity || p.rated_capacity_m3s || 'Nominal'}</strong></div>
+                        </div>
+                    `);
+                }
+            }).addTo(state.map);
+        }
+    } catch (e) {
+        console.warn("Could not load facilities GeoJSON:", e);
+    }
+}
+
+function getRoadStyle(feature, waterDepth) {
+    const p = feature.properties;
+    const isHighway = (p.road_class === "highway");
+    let baseWidth = isHighway ? 4.5 : (p.road_class === "arterial" ? 3.0 : 1.8);
+    let color = isHighway ? "#64748b" : "#334155";
+
+    if (waterDepth >= 0.30) {
+        // Closed emergency / impassable
+        color = "#ef4444";
+        baseWidth += 2.0;
+    } else if (waterDepth >= 0.15) {
+        // Stalled passenger vehicles
+        color = "#f97316";
+        baseWidth += 1.2;
+    } else if (waterDepth >= 0.05) {
+        // Speed degraded
+        color = "#eab308";
+        baseWidth += 0.5;
+    }
+
+    return {
+        color: color,
+        weight: baseWidth,
+        opacity: waterDepth >= 0.15 ? 1.0 : 0.85
+    };
+}
+
+function createFacilityIcon(category, isTripped) {
+    let cls = "icon-substation";
+    let symbol = "⚡";
+    let size = [26, 26];
+
+    if (category === "hospitals") {
+        cls = "icon-hospital";
+        symbol = "+";
+        size = [28, 28];
+    } else if (category === "electrical_substations") {
+        cls = isTripped ? "icon-substation tripped" : "icon-substation";
+        symbol = "⚡";
+    } else if (category === "pumping_stations") {
+        cls = isTripped ? "icon-pump tripped" : "icon-pump";
+        symbol = "P";
+    } else if (category === "ems_stations") {
+        cls = "icon-ems";
+        symbol = "🚒";
+    }
+
+    return L.divIcon({
+        className: `facility-marker-icon ${cls}`,
+        html: `<span>${symbol}</span>`,
+        iconSize: size,
+        iconAnchor: [size[0] / 2, size[1] / 2]
+    });
+}
+
+
+// =========================================================================
+// SCENARIO EXECUTION & TIMELINE ROLLOUT
+// =========================================================================
 
 async function runScenario(autoPlay = true) {
     const rainfall = parseFloat(sliderRain.value);
@@ -182,6 +444,9 @@ async function runScenario(autoPlay = true) {
     const p2 = parseFloat(sliderPump2.value) / 100.0;
 
     try {
+        elRunScenario.disabled = true;
+        document.getElementById("runScenarioLabel").innerText = "SIMULATING...";
+
         const payload = {
             rainfall_mm_hr: rainfall,
             duration_hours: duration,
@@ -203,7 +468,7 @@ async function runScenario(autoPlay = true) {
         elTimelineScrubber.max = state.totalSteps;
         elTimelineTotalLabel.innerText = `T+${formatHoursMinutes(duration * 3600)}`;
 
-        // Fetch all frames into local cache
+        // Fetch all frames into local trajectory cache
         state.frames = [];
         for (let s = 0; s <= state.totalSteps; s++) {
             const fRes = await fetch(`/api/simulation/frame?step_idx=${s}&branch_id=${state.currentBranch}`);
@@ -213,19 +478,22 @@ async function runScenario(autoPlay = true) {
             }
         }
 
-        // Scrub to initial frame
-        scrubToStep(0);
-
-        // Update sparkline graphs from summary series
+        // Update sparkline series
         state.historyFloodedArea = summary.flooded_area_km2_series;
         state.historyEmsTime = summary.ems_time_min_series;
         updateSparklines();
+
+        // Scrub to initial frame or start playback
+        scrubToStep(0);
 
         if (autoPlay) {
             startPlayback();
         }
     } catch (err) {
         console.error("Run scenario error:", err);
+    } finally {
+        elRunScenario.disabled = false;
+        document.getElementById("runScenarioLabel").innerText = "RUN SCENARIO (3 HR)";
     }
 }
 
@@ -243,19 +511,159 @@ function scrubToStep(stepIdx) {
     elSimTime.innerText = `T+${formatTime(timeSec)}`;
     elTimelineTimeLabel.innerText = `T+${formatHoursMinutes(timeSec)}`;
 
+    // 1. Update Inundation Raster Overlay
+    updateFloodOverlay(frame.surface_depth_grid);
+
+    // 2. Update Dynamic Road Network Colors
+    updateRoadPassability(frame.surface_depth_grid);
+
+    // 3. Update Facility Operational Status
+    updateFacilityStatus(frame.surface_depth_grid);
+
+    // 4. Update KPI Telemetry Cards
     updateTelemetry(frame.snapshot);
-    renderGeoMap();
 }
 
 
-// --- Playback Animation Loop ---
+// =========================================================================
+// HYDRODYNAMIC FLOOD RASTER OVERLAY GENERATION
+// =========================================================================
+
+function updateFloodOverlay(depthGrid) {
+    if (!depthGrid || !state.floodOverlay) return;
+
+    const ctx = state.floodCtx;
+    const cw = state.floodCanvas.width;
+    const ch = state.floodCanvas.height;
+    ctx.clearRect(0, 0, cw, ch);
+
+    const rows = depthGrid.length;
+    const cols = depthGrid[0].length;
+    const imgData = ctx.createImageData(cw, ch);
+    const data = imgData.data;
+
+    const scaleX = cols / cw;
+    const scaleY = rows / ch;
+
+    // Bilinear interpolation across 240x240 canvas
+    for (let py = 0; py < ch; py++) {
+        const rFloat = py * scaleY;
+        const r0 = Math.floor(rFloat);
+        const r1 = Math.min(r0 + 1, rows - 1);
+        const dr = rFloat - r0;
+
+        for (let px = 0; px < cw; px++) {
+            const cFloat = px * scaleX;
+            const c0 = Math.floor(cFloat);
+            const c1 = Math.min(c0 + 1, cols - 1);
+            const dc = cFloat - c0;
+
+            // Bilinear depth sampling
+            const h = (1 - dr) * (1 - dc) * depthGrid[r0][c0] +
+                      (1 - dr) * dc * depthGrid[r0][c1] +
+                      dr * (1 - dc) * depthGrid[r1][c0] +
+                      dr * dc * depthGrid[r1][c1];
+
+            if (h < 0.04) continue; // Dry or negligible ponding
+
+            const idx = (py * cw + px) * 4;
+
+            // Continuous scientific water depth colormap
+            if (h < 0.15) {
+                // Shallow: 0.05m to 0.15m (Sky Blue)
+                data[idx] = 56;
+                data[idx + 1] = 189;
+                data[idx + 2] = 248;
+                data[idx + 3] = Math.floor(130 * Math.min(1.0, (h - 0.04) / 0.11));
+            } else if (h < 0.30) {
+                // Passenger stall: 0.15m to 0.30m (Vibrant Cyan-Blue)
+                data[idx] = 14;
+                data[idx + 1] = 165;
+                data[idx + 2] = 233;
+                data[idx + 3] = 185;
+            } else if (h < 0.60) {
+                // Emergency cutoff: 0.30m to 0.60m (Cobalt Royal Blue)
+                data[idx] = 37;
+                data[idx + 1] = 99;
+                data[idx + 2] = 235;
+                data[idx + 3] = 220;
+            } else {
+                // Extreme deep: >0.60m (Deep Indigo / Violet)
+                data[idx] = 49;
+                data[idx + 1] = 46;
+                data[idx + 2] = 129;
+                data[idx + 3] = 240;
+            }
+        }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    state.floodOverlay.setUrl(state.floodCanvas.toDataURL());
+}
+
+function updateRoadPassability(depthGrid) {
+    if (!state.roadsLayer || !depthGrid) return;
+
+    state.roadsLayer.eachLayer(layer => {
+        const feat = layer.feature;
+        const coords = feat.geometry.coordinates;
+
+        // Sample midpoint water depth
+        const midLon = (coords[0][0] + coords[1][0]) / 2.0;
+        const midLat = (coords[0][1] + coords[1][1]) / 2.0;
+
+        const cell = latLngToGrid(midLat, midLon);
+        let water = 0.0;
+        if (cell.r >= 0 && cell.r < depthGrid.length && cell.c >= 0 && cell.c < depthGrid[0].length) {
+            water = depthGrid[cell.r][cell.c];
+        }
+
+        layer.setStyle(getRoadStyle(feat, water));
+    });
+}
+
+function updateFacilityStatus(depthGrid) {
+    if (!state.facilitiesLayer || !depthGrid) return;
+
+    state.facilitiesLayer.eachLayer(layer => {
+        const feat = layer.feature;
+        const [lon, lat] = feat.geometry.coordinates;
+        const cell = latLngToGrid(lat, lon);
+
+        let water = 0.0;
+        if (cell.r >= 0 && cell.r < depthGrid.length && cell.c >= 0 && cell.c < depthGrid[0].length) {
+            water = depthGrid[cell.r][cell.c];
+        }
+
+        const thresh = feat.properties.flood_vulnerability_threshold_m || 0.30;
+        const isTripped = (water >= thresh);
+
+        layer.setIcon(createFacilityIcon(feat.properties.category, isTripped));
+    });
+}
+
+function latLngToGrid(lat, lon) {
+    const latMin = GEO_BOUNDS[0][0];
+    const latMax = GEO_BOUNDS[1][0];
+    const lonMin = GEO_BOUNDS[0][1];
+    const lonMax = GEO_BOUNDS[1][1];
+
+    const normX = (lon - lonMin) / (lonMax - lonMin);
+    const normY = (lat - latMin) / (latMax - latMin);
+
+    const c = Math.floor(normX * 120.0);
+    const r = Math.floor((1.0 - normY) * 120.0);
+    return { r, c };
+}
+
+
+// =========================================================================
+// PLAYBACK ANIMATION LOOP
+// =========================================================================
 
 function togglePlayback() {
-    if (state.isPlaying) {
-        stopPlayback();
-    } else {
-        startPlayback();
-    }
+    if (state.isPlaying) stopPlayback();
+    else startPlayback();
 }
 
 function startPlayback() {
@@ -271,7 +679,7 @@ function startPlayback() {
             return;
         }
         scrubToStep(state.currentStepIdx + 1);
-    }, 450);
+    }, 400);
 }
 
 function stopPlayback() {
@@ -286,313 +694,12 @@ function stopPlayback() {
 }
 
 
-// --- Geographical Map Rendering Engine ---
-
-function renderGeoMap() {
-    if (!state.terrain) return;
-
-    const W = canvas.width;
-    const H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
-
-    const showWater = document.getElementById("chkWater").checked;
-    const showRoads = document.getElementById("chkRoads").checked;
-    const showBlocks = document.getElementById("chkBlocks").checked;
-    const showFootprints = document.getElementById("chkFootprints").checked;
-    const showHillshade = document.getElementById("chkHillshade").checked;
-    const showFacilities = document.getElementById("chkFacilities").checked;
-
-    const rows = state.terrain.rows;
-    const cols = state.terrain.cols;
-    const cellW = W / cols;
-    const cellH = H / rows;
-
-    const depthGrid = state.currentFrame ? state.currentFrame.surface_depth_grid : null;
-
-    // 1. Terrain Topography & Analytical Hillshade
-    const imgData = ctx.createImageData(W, H);
-    const data = imgData.data;
-
-    const minElev = state.terrain.min_elevation_m;
-    const maxElev = state.terrain.max_elevation_m;
-
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            const elev = state.terrain.elevation_grid[r][c];
-            const isRiver = state.terrain.river_mask[r][c];
-            const shade = (showHillshade && state.hillshade) ? state.hillshade[r][c] : 0.5;
-
-            // Normalized elevation (0.0 to 1.0)
-            const normElev = (elev - minElev) / (maxElev - minElev);
-
-            // Hypsometric terrain palette: valley green/slate -> mid-plateau -> highland ridge
-            let cr, cg, cb;
-            if (isRiver) {
-                // Natural river channel: deep cerulean
-                cr = 3; cg = 105; cb = 161;
-            } else {
-                // Valley greens to upland rock
-                const baseR = 18 + normElev * 25;
-                const baseG = 28 + normElev * 35;
-                const baseB = 24 + normElev * 40;
-
-                // Modulate with analytical hillshade illumination
-                const lightFactor = 0.5 + shade * 0.75;
-                cr = Math.floor(npClamp(baseR * lightFactor, 0, 255));
-                cg = Math.floor(npClamp(baseG * lightFactor, 0, 255));
-                cb = Math.floor(npClamp(baseB * lightFactor, 0, 255));
-            }
-
-            const startX = Math.floor(c * cellW);
-            const startY = Math.floor(r * cellH);
-            const endX = Math.floor((c + 1) * cellW);
-            const endY = Math.floor((r + 1) * cellH);
-
-            for (let py = startY; py < endY; py++) {
-                for (let px = startX; px < endX; px++) {
-                    const idx = (py * W + px) * 4;
-                    data[idx] = cr;
-                    data[idx + 1] = cg;
-                    data[idx + 2] = cb;
-                    data[idx + 3] = 255;
-                }
-            }
-        }
-    }
-    ctx.putImageData(imgData, 0, 0);
-
-    // 2. Urban Blocks (Zoning Parcels)
-    if (showBlocks && state.blocks.length > 0) {
-        ctx.lineWidth = 1.0;
-        state.blocks.forEach(blk => {
-            const coords = blk.geometry.coordinates[0];
-            const props = blk.properties;
-
-            ctx.beginPath();
-            coords.forEach((pt, idx) => {
-                const px = (pt[0] / 6000.0) * W;
-                const py = (1.0 - pt[1] / 6000.0) * H;
-                if (idx === 0) ctx.moveTo(px, py);
-                else ctx.lineTo(px, py);
-            });
-            ctx.closePath();
-
-            // Subtle zoning fill
-            ctx.fillStyle = `${props.color}0d`;
-            ctx.fill();
-            ctx.strokeStyle = `${props.color}33`;
-            ctx.stroke();
-        });
-    }
-
-    // 3. Architectural Building Footprints
-    if (showFootprints && state.footprints.length > 0) {
-        state.footprints.forEach(bldg => {
-            const coords = bldg.geometry.coordinates[0];
-            const props = bldg.properties;
-
-            const p1 = projectTopDown(coords[0][0], coords[0][1], W, H);
-            const p2 = projectTopDown(coords[2][0], coords[2][1], W, H);
-            const bw = Math.abs(p2.x - p1.x);
-            const bh = Math.abs(p2.y - p1.y);
-
-            // Drop shadow
-            ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-            ctx.fillRect(Math.min(p1.x, p2.x) + 2, Math.min(p1.y, p2.y) + 2, bw, bh);
-
-            // Roof footprint fill by zoning type
-            let roofColor = "#1e293b";
-            if (props.zoning === "commercial_high" || props.zoning === "commercial_medium") {
-                roofColor = "#0f172a";
-            } else if (props.zoning === "industrial_heavy" || props.zoning === "port_industrial") {
-                roofColor = "#262626";
-            }
-
-            ctx.fillStyle = roofColor;
-            ctx.fillRect(Math.min(p1.x, p2.x), Math.min(p1.y, p2.y), bw, bh);
-
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
-            ctx.lineWidth = 0.8;
-            ctx.strokeRect(Math.min(p1.x, p2.x), Math.min(p1.y, p2.y), bw, bh);
-        });
-    }
-
-    // 4. Road Network with Hierarchy & Dynamic Passability
-    if (showRoads && state.roads.length > 0) {
-        state.roads.forEach(feat => {
-            const coords = feat.geometry.coordinates;
-            const props = feat.properties;
-            const isHighway = props.road_class === "highway";
-            const isBridge = props.is_bridge;
-
-            const p1 = projectTopDown(coords[0][0], coords[0][1], W, H);
-            const p2 = projectTopDown(coords[1][0], coords[1][1], W, H);
-
-            // Sample midpoint water depth
-            const midX = (coords[0][0] + coords[1][0]) / 2.0;
-            const midY = (coords[0][1] + coords[1][1]) / 2.0;
-            const mc = Math.floor(midX / 50.0);
-            const mr = Math.floor((6000.0 - midY) / 50.0);
-
-            let water = 0.0;
-            if (depthGrid && mr >= 0 && mr < rows && mc >= 0 && mc < cols) {
-                water = depthGrid[mr][mc];
-            }
-
-            // Determine road passability color & line width
-            let roadColor = "#334155";
-            let roadWidth = isHighway ? 5.5 : 2.8;
-
-            if (water >= 0.30) {
-                roadColor = "#ef4444"; // Closed emergency / severed
-                roadWidth += 1.5;
-            } else if (water >= 0.15) {
-                roadColor = "#f59e0b"; // Closed passenger
-                roadWidth += 1.0;
-            } else if (water >= 0.05) {
-                roadColor = "#eab308"; // Speed degraded
-            } else if (isHighway) {
-                roadColor = "#475569";
-            }
-
-            ctx.strokeStyle = roadColor;
-            ctx.lineWidth = roadWidth;
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-
-            // Highway centerline dashed lane stripes
-            if (isHighway && water < 0.15) {
-                ctx.strokeStyle = "#94a3b8";
-                ctx.lineWidth = 1.0;
-                ctx.setLineDash([4, 4]);
-                ctx.beginPath();
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
-
-            // Bridge abutment markers
-            if (isBridge) {
-                ctx.strokeStyle = "#f8fafc";
-                ctx.lineWidth = 1.0;
-                ctx.stroke();
-            }
-        });
-    }
-
-    // 5. Continuous Hydrodynamic Flood Inundation Raster
-    if (showWater && depthGrid) {
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const h = depthGrid[r][c];
-                if (h <= 0.03) continue;
-
-                const px = (c / cols) * W;
-                const py = (r / rows) * H;
-                const pw = cellW + 0.5;
-                const ph = cellH + 0.5;
-
-                // Scientific continuous flood depth coloring
-                if (h < 0.15) {
-                    // Shallow: 0.05m to 0.15m (Sky Blue, 45% opacity)
-                    ctx.fillStyle = "rgba(56, 189, 248, 0.45)";
-                } else if (h < 0.30) {
-                    // Passenger stall: 0.15m to 0.30m (Azure Blue, 70% opacity)
-                    ctx.fillStyle = "rgba(2, 132, 199, 0.70)";
-                } else if (h < 0.60) {
-                    // Emergency cutoff: 0.30m to 0.60m (Deep Cobalt, 85% opacity)
-                    ctx.fillStyle = "rgba(29, 78, 216, 0.85)";
-                } else {
-                    // Severe / Dangerous: >0.60m (Indigo/Violet, 95% opacity)
-                    ctx.fillStyle = "rgba(67, 56, 202, 0.95)";
-                }
-
-                ctx.fillRect(px, py, pw, ph);
-            }
-        }
-    }
-
-    // 6. Critical Facilities
-    if (showFacilities && state.facilities.length > 0) {
-        state.facilities.forEach(feat => {
-            const props = feat.properties;
-            const [fx, fy] = feat.geometry.coordinates;
-            const pt = projectTopDown(fx, fy, W, H);
-
-            // Sample water depth at facility
-            const mc = Math.floor(fx / 50.0);
-            const mr = Math.floor((6000.0 - fy) / 50.0);
-            let water = (depthGrid && mr >= 0 && mr < rows && mc >= 0 && mc < cols) ? depthGrid[mr][mc] : 0.0;
-
-            if (props.category === "hospitals") {
-                // Hospital: Red circle with white medical cross
-                ctx.fillStyle = "#ef4444";
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, 7, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = "#ffffff";
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 9px sans-serif";
-                ctx.fillText("+", pt.x - 3, pt.y + 3);
-            } else if (props.category === "electrical_substations") {
-                // Substation: Square with lightning bolt
-                const isTripped = water >= props.flood_vulnerability_threshold_m;
-                ctx.fillStyle = isTripped ? "#ef4444" : "#00f0ff";
-                ctx.fillRect(pt.x - 5, pt.y - 5, 10, 10);
-                ctx.strokeStyle = "#ffffff";
-                ctx.lineWidth = 1;
-                ctx.strokeRect(pt.x - 5, pt.y - 5, 10, 10);
-
-                ctx.fillStyle = "#090d16";
-                ctx.font = "bold 8px monospace";
-                ctx.fillText("⚡", pt.x - 4, pt.y + 3);
-            } else if (props.category === "pumping_stations") {
-                // Pump Station: Diamond with P
-                ctx.fillStyle = "#10b981";
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = "#ffffff";
-                ctx.stroke();
-
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 7px sans-serif";
-                ctx.fillText("P", pt.x - 2.5, pt.y + 2.5);
-            } else if (props.category === "ems_stations") {
-                // EMS Station: Amber dot
-                ctx.fillStyle = "#f59e0b";
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = "#ffffff";
-                ctx.stroke();
-            }
-        });
-    }
-}
-
-function projectTopDown(x, y, W, H) {
-    return {
-        x: (x / 6000.0) * W,
-        y: (1.0 - y / 6000.0) * H
-    };
-}
-
-function npClamp(val, min, max) {
-    return Math.max(min, Math.min(val, max));
-}
-
-
-// --- Event Listeners & Sliders ---
+// =========================================================================
+// UI EVENT LISTENERS
+// =========================================================================
 
 function setupEventListeners() {
-    // Primary Header Actions
+    // Header Actions
     elRunScenario.addEventListener("click", () => runScenario(true));
     elPlayPause.addEventListener("click", togglePlayback);
     elReset.addEventListener("click", () => scrubToStep(0));
@@ -602,43 +709,31 @@ function setupEventListeners() {
         stopPlayback();
         scrubToStep(parseInt(e.target.value));
     });
-
     elBtnStepBack.addEventListener("click", () => {
         stopPlayback();
         scrubToStep(state.currentStepIdx - 1);
     });
-
     elBtnStepPlay.addEventListener("click", togglePlayback);
-
     elBtnStepForward.addEventListener("click", () => {
         stopPlayback();
         scrubToStep(state.currentStepIdx + 1);
     });
 
+    // Basemap Switcher Buttons
+    document.getElementById("bmDark").addEventListener("click", () => setBasemap("dark"));
+    document.getElementById("bmSatellite").addEventListener("click", () => setBasemap("satellite"));
+    document.getElementById("bmStreet").addEventListener("click", () => setBasemap("street"));
+
     // Sliders
-    sliderRain.addEventListener("input", (e) => {
-        valRain.innerText = `${e.target.value} mm/hr`;
-    });
+    sliderRain.addEventListener("input", (e) => { valRain.innerText = `${e.target.value} mm/hr`; });
+    sliderDuration.addEventListener("input", (e) => { valDuration.innerText = `${parseFloat(e.target.value).toFixed(1)} hrs`; });
+    sliderDrain.addEventListener("input", (e) => { valDrain.innerText = `${e.target.value}%`; });
+    sliderPump1.addEventListener("input", (e) => { valPump1.innerText = `${e.target.value}%`; });
+    sliderPump2.addEventListener("input", (e) => { valPump2.innerText = `${e.target.value}%`; });
 
-    sliderDuration.addEventListener("input", (e) => {
-        valDuration.innerText = `${parseFloat(e.target.value).toFixed(1)} hrs`;
-    });
-
-    sliderDrain.addEventListener("input", (e) => {
-        valDrain.innerText = `${e.target.value}%`;
-    });
-
-    sliderPump1.addEventListener("input", (e) => {
-        valPump1.innerText = `${e.target.value}%`;
-    });
-
-    sliderPump2.addEventListener("input", (e) => {
-        valPump2.innerText = `${e.target.value}%`;
-    });
-
-    // Engine toggle
-    modeNeuralBtn.addEventListener("click", () => setEngineMode("world_model"));
+    // Dynamics Engine Selector
     modePhysicsBtn.addEventListener("click", () => setEngineMode("physics"));
+    modeNeuralBtn.addEventListener("click", () => setEngineMode("world_model"));
 
     // NLP Execution
     btnNlp.addEventListener("click", handleNlpPrompt);
@@ -647,34 +742,49 @@ function setupEventListeners() {
     btnFork.addEventListener("click", handleForkScenario);
     btnCompare.addEventListener("click", handleCompareBranches);
 
-    // Canvas Hover Inspector
-    canvas.addEventListener("mousemove", handleCanvasHover);
-    canvas.addEventListener("mouseleave", () => inspectorCard.classList.add("hidden"));
+    // Layer Checkboxes
+    setupLayerToggle("chkWater", () => state.floodOverlay);
+    setupLayerToggle("chkRoads", () => state.roadsLayer);
+    setupLayerToggle("chkRiver", () => state.riverLayer);
+    setupLayerToggle("chkFootprints", () => state.footprintsLayer);
+    setupLayerToggle("chkBlocks", () => state.blocksLayer);
+    setupLayerToggle("chkContours", () => state.contoursLayer);
+    setupLayerToggle("chkFacilities", () => state.facilitiesLayer);
+}
 
-    // Layer checkboxes
-    ["chkWater", "chkRoads", "chkBlocks", "chkFootprints", "chkHillshade", "chkFacilities"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener("change", renderGeoMap);
+function setupLayerToggle(id, layerGetter) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("change", (e) => {
+        const layer = layerGetter();
+        if (!layer) return;
+        if (e.target.checked) {
+            state.map.addLayer(layer);
+        } else {
+            state.map.removeLayer(layer);
+        }
     });
 }
 
 function setEngineMode(mode) {
     state.engineMode = mode;
-    if (mode === "world_model") {
-        modeNeuralBtn.classList.add("active");
-        modePhysicsBtn.classList.remove("active");
-        elEngineBadge.innerText = "NEURAL WORLD MODEL (2ms)";
-        elEngineBadge.className = "val val-accent";
-    } else {
+    if (mode === "physics") {
         modePhysicsBtn.classList.add("active");
         modeNeuralBtn.classList.remove("active");
         elEngineBadge.innerText = "COUPLED 2D PHYSICS (Exact)";
         elEngineBadge.className = "val val-success";
+    } else {
+        modeNeuralBtn.classList.add("active");
+        modePhysicsBtn.classList.remove("active");
+        elEngineBadge.innerText = "NEURAL WORLD MODEL (2ms)";
+        elEngineBadge.className = "val val-accent";
     }
 }
 
 
-// --- NLP Scenario Parser Handler ---
+// =========================================================================
+// NLP SCENARIO PARSER HANDLER
+// =========================================================================
 
 async function handleNlpPrompt() {
     const prompt = nlpInput.value.trim();
@@ -727,7 +837,9 @@ async function handleNlpPrompt() {
 }
 
 
-// --- Counterfactual Timeline Branching ---
+// =========================================================================
+// COUNTERFACTUAL BRANCHING & COMPARISON
+// =========================================================================
 
 async function handleForkScenario() {
     const branchName = `intervention_branch_${Date.now().toString().slice(-4)}`;
@@ -797,44 +909,68 @@ async function handleCompareBranches() {
 }
 
 
-// --- Location Inspector Hover ---
+// =========================================================================
+// MAP HOVER INSPECTOR
+// =========================================================================
 
-function handleCanvasHover(e) {
-    if (!state.terrain) return;
+function handleMapMouseMove(e) {
+    const lat = e.latlng.lat;
+    const lon = e.latlng.lng;
 
-    const rect = canvas.getBoundingClientRect();
-    const xPx = e.clientX - rect.left;
-    const yPx = e.clientY - rect.top;
-
-    const normX = xPx / canvas.width;
-    const normY = yPx / canvas.height;
-
-    const col = Math.floor(normX * state.terrain.cols);
-    const row = Math.floor(normY * state.terrain.rows);
-
-    if (row < 0 || row >= state.terrain.rows || col < 0 || col >= state.terrain.cols) {
-        inspectorCard.classList.add("hidden");
-        return;
+    const cell = latLngToGrid(lat, lon);
+    const depthGrid = state.currentFrame ? state.currentFrame.surface_depth_grid : null;
+    let water = 0.0;
+    if (depthGrid && cell.r >= 0 && cell.r < depthGrid.length && cell.c >= 0 && cell.c < depthGrid[0].length) {
+        water = depthGrid[cell.r][cell.c];
     }
 
-    const elev = state.terrain.elevation_grid[row][col];
-    const depthGrid = state.currentFrame ? state.currentFrame.surface_depth_grid : null;
-    const water = depthGrid ? depthGrid[row][col] : 0.0;
-    const worldX = Math.round(col * 50.0);
-    const worldY = Math.round(6000.0 - (row * 50.0));
+    // Estimate elevation from row/col
+    const elev = 15.0 + ((119 - cell.r) / 119.0) * 35.0;
 
     inspectorCard.classList.remove("hidden");
     inspectorContent.innerHTML = `
-        <div class="inspector-row"><span>Coordinates:</span><strong>(${worldX}m, ${worldY}m)</strong></div>
+        <div class="inspector-row"><span>Geographic GPS:</span><strong>${lat.toFixed(4)}°N, ${Math.abs(lon).toFixed(4)}°W</strong></div>
         <div class="inspector-row"><span>Ground Elevation:</span><strong>${elev.toFixed(1)} m</strong></div>
-        <div class="inspector-row"><span>Water Depth:</span><strong style="color: ${water > 0.15 ? 'var(--danger-red)' : (water > 0.03 ? 'var(--accent-cyan)' : 'var(--text-primary)')}">${(water * 100).toFixed(1)} cm</strong></div>
+        <div class="inspector-row"><span>Water Inundation:</span><strong style="color: ${water > 0.15 ? 'var(--danger-red)' : (water > 0.04 ? 'var(--accent-cyan)' : 'var(--text-primary)')}">${(water * 100).toFixed(1)} cm</strong></div>
         <div class="inspector-row"><span>Passenger Traffic:</span><strong style="color: ${water >= 0.15 ? 'var(--danger-red)' : 'var(--success-green)'}">${water >= 0.15 ? 'CLOSED (Stalled)' : 'OPEN'}</strong></div>
         <div class="inspector-row"><span>Emergency Route:</span><strong style="color: ${water >= 0.30 ? 'var(--danger-red)' : 'var(--success-green)'}">${water >= 0.30 ? 'IMPASSABLE' : 'PASSABLE'}</strong></div>
     `;
 }
 
+function handleRoadClick(feature, layer) {
+    const p = feature.properties;
+    const coords = feature.geometry.coordinates;
+    const midLon = (coords[0][0] + coords[1][0]) / 2.0;
+    const midLat = (coords[0][1] + coords[1][1]) / 2.0;
 
-// --- Telemetry Displays & Sparklines ---
+    const cell = latLngToGrid(midLat, midLon);
+    const depthGrid = state.currentFrame ? state.currentFrame.surface_depth_grid : null;
+    let water = 0.0;
+    if (depthGrid && cell.r >= 0 && cell.r < depthGrid.length && cell.c >= 0 && cell.c < depthGrid[0].length) {
+        water = depthGrid[cell.r][cell.c];
+    }
+
+    let status = "OPEN (Normal Free Flow)";
+    if (water >= 0.30) status = "CLOSED (Emergency Impassable)";
+    else if (water >= 0.15) status = "STALLED (Passenger Cutoff)";
+    else if (water >= 0.05) status = "SPEED DEGRADED (Pregnolato Curve)";
+
+    layer.bindPopup(`
+        <div style="font-family: var(--font-sans); min-width: 170px;">
+            <strong style="color: var(--accent-cyan); font-size: 13px;">${p.edge_id}</strong><br>
+            <span style="color: var(--text-muted); font-size: 10px; text-transform: uppercase;">Class: ${p.road_class}</span>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 6px 0;">
+            <div>Speed Limit: <strong>${p.free_flow_speed_kmh} km/h</strong></div>
+            <div>Inundation Depth: <strong style="color: ${water >= 0.15 ? '#ef4444' : '#00f0ff'};">${(water * 100).toFixed(1)} cm</strong></div>
+            <div>Status: <strong>${status}</strong></div>
+        </div>
+    `).openPopup();
+}
+
+
+// =========================================================================
+// TELEMETRY & SPARKLINES
+// =========================================================================
 
 function updateTelemetry(snap) {
     if (!snap) return;
@@ -908,5 +1044,5 @@ function formatHoursMinutes(totalSeconds) {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 
-// Start application
+// Start application on DOM ready
 window.addEventListener("DOMContentLoaded", init);

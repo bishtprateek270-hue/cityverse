@@ -221,6 +221,75 @@ def get_city_footprints():
     raise HTTPException(status_code=404, detail="Building footprints GeoJSON not found.")
 
 
+# --- Geographic WGS84 GIS Endpoints for Leaflet Digital Twin ---
+
+@app.get("/api/city/geo/river")
+def get_city_geo_river():
+    path = Path("data/raw_city_gis/river_wgs84.geojson")
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    raise HTTPException(status_code=404, detail="River GeoJSON not found.")
+
+
+@app.get("/api/city/geo/roads")
+def get_city_geo_roads():
+    path = Path("data/raw_city_gis/road_network_wgs84.geojson")
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    raise HTTPException(status_code=404, detail="Road network GeoJSON not found.")
+
+
+@app.get("/api/city/geo/facilities")
+def get_city_geo_facilities():
+    path = Path("data/raw_city_gis/critical_facilities_wgs84.geojson")
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    raise HTTPException(status_code=404, detail="Facilities GeoJSON not found.")
+
+
+@app.get("/api/city/geo/blocks")
+def get_city_geo_blocks():
+    path = Path("data/raw_city_gis/urban_blocks_wgs84.geojson")
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    raise HTTPException(status_code=404, detail="Urban blocks GeoJSON not found.")
+
+
+@app.get("/api/city/geo/footprints")
+def get_city_geo_footprints():
+    path = Path("data/raw_city_gis/building_footprints_wgs84.geojson")
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    raise HTTPException(status_code=404, detail="Footprints GeoJSON not found.")
+
+
+@app.get("/api/city/geo/contours")
+def get_city_geo_contours():
+    path = Path("data/raw_city_gis/elevation_contours_wgs84.geojson")
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    raise HTTPException(status_code=404, detail="Contours GeoJSON not found.")
+
+
+@app.get("/api/city/geo/bounds")
+def get_city_geo_bounds():
+    return {
+        "lat_min": 29.7200,
+        "lat_max": 29.77412,
+        "lon_min": -95.4000,
+        "lon_max": -95.33792,
+        "center": [29.74706, -95.36896],
+        "domain_name": "MetroVerdia",
+        "extent_km": [6.0, 6.0]
+    }
+
+
 @app.post("/api/simulation/run_scenario")
 def run_scenario(req: ScenarioStartRequest):
     init_engine()

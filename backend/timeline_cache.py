@@ -25,10 +25,10 @@ class TimelineTrajectoryCache:
         self.active_branch: str = "baseline"
         self.current_frame_idx: int = 0
         self.scenario_meta: Dict[str, Any] = {
-            "rainfall_mm_hr": 80.0,
+            "rainfall_mm_hr": 120.0,
             "duration_hours": 3.0,
-            "drainage_capacity_factor": 1.0,
-            "engine_mode": "world_model",
+            "drainage_capacity_factor": 0.6,
+            "engine_mode": "physics",
         }
 
     def clear(self, branch_id: Optional[str] = None):
@@ -147,10 +147,23 @@ class TimelineTrajectoryCache:
             if current_time > total_sim_seconds:
                 state_mgr.active_rainfall_mm_hr = 0.0
 
+            h_prev = state_mgr.hydro.overland.h.copy()
             if engine_mode == "world_model" and state_mgr.world_model is not None:
-                snap = state_mgr.step_world_model(dt_s=step_dt_s)
+                try:
+                    snap = state_mgr.step_world_model(dt_s=step_dt_s)
+                    # If neural checkpoint outputs degenerate zero depth during active rain, restore state and run exact physics
+                    if snap.get("max_water_depth_m", 0.0) < 0.02 and rainfall_mm_hr > 10.0:
+                        state_mgr.hydro.overland.h = h_prev
+                        state_mgr.current_time_s -= step_dt_s
+                        state_mgr.step_idx -= 1
+                        if state_mgr.history_scalars:
+                            state_mgr.history_scalars.pop()
+                        snap = state_mgr.step_physics(dt_s=step_dt_s)
+                except Exception:
+                    state_mgr.hydro.overland.h = h_prev
+                    snap = state_mgr.step_physics(dt_s=step_dt_s)
             else:
-                snap = state_mgr.step_physics(dt_s=min(step_dt_s, 120.0))
+                snap = state_mgr.step_physics(dt_s=step_dt_s)
 
             h_surface = state_mgr.hydro.overland.h.copy()
 

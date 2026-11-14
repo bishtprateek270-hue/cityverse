@@ -193,8 +193,10 @@ class CityStateManager:
         pred_h = out["pred_grid_h"].squeeze().cpu().numpy()
         pred_scalars = out["pred_scalars"].squeeze().cpu().numpy()
         
-        # Update surface water depth
+        # Update surface water depth and dynamic road closures
         self.hydro.overland.h = pred_h.astype(np.float32)
+        self.dyn_roads.update_flood_conditions(self.hydro.overland.h)
+        road_summary = self.dyn_roads.get_summary_metrics()
         self.current_time_s += dt_s
         self.step_idx += 1
         
@@ -207,10 +209,10 @@ class CityStateManager:
             "max_water_depth_m": float(np.max(pred_h)),
             "operational_substations": int(np.clip(np.round(pred_scalars[7]), 0, 3)),
             "disabled_pumps": int(np.clip(np.round(pred_scalars[8]), 0, 2)),
-            "closed_roads_passenger": int(max(0, pred_scalars[5])),
-            "closed_roads_emergency": int(max(0, pred_scalars[6])),
+            "closed_roads_passenger": road_summary["closed_edges_passenger"],
+            "closed_roads_emergency": road_summary["closed_edges_emergency"],
             "ems_coverage_pct": float(np.clip(pred_scalars[9], 0.0, 100.0)),
-            "avg_ems_response_min": float(max(1.0, pred_scalars[10])),
+            "avg_ems_response_min": float(np.clip(pred_scalars[10], 1.0, 45.0)),
         }
         self.history_timestamps.append(self.current_time_s)
         self.history_scalars.append(snapshot)
