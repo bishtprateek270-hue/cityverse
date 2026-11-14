@@ -51,9 +51,9 @@ def main():
         checkpoint_dir="models/checkpoints",
     )
     
-    # 4. Train 3 epochs for fast baseline checkpointing
-    print("Training model across 3 epochs...")
-    history = trainer.fit(train_loader, val_loader, epochs=3, save_best=True)
+    # 4. Train 25 epochs for accurate hydrological convergence
+    print("Training model across 25 epochs...")
+    history = trainer.fit(train_loader, val_loader, epochs=25, save_best=True)
     
     for h in history:
         print(f"Epoch {h['epoch']}: Train Loss = {h['train_loss']:.4f} (MAE: {h['train_mae']:.4f}) | Val Loss = {h['val_loss']:.4f} (MAE: {h['val_mae']:.4f}) | Time = {h['elapsed_s']:.1f}s")

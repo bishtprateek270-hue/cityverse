@@ -65,8 +65,13 @@ class PhysicsInformedFloodLoss(nn.Module):
         target_delta_vol = torch.mean(target_h - curr_h, dim=(1, 2, 3))
         l_mass = torch.mean(torch.abs(pred_delta_vol - target_delta_vol))
         
-        # 4. System Scalars Loss (Huber Loss)
-        l_scalars = F.smooth_l1_loss(pred_scalars, target_scalars)
+        # 4. System Scalars Loss (Huber Loss with canonical scale normalization)
+        scalar_scales = torch.tensor(
+            [100.0, 1.0, 5.0, 5.0, 50000.0, 100.0, 50.0, 3.0, 2.0, 100.0, 10.0],
+            device=pred_scalars.device,
+            dtype=pred_scalars.dtype
+        )
+        l_scalars = F.smooth_l1_loss(pred_scalars / scalar_scales, target_scalars / scalar_scales)
         
         # 5. Road Depth Loss
         l_roads = torch.tensor(0.0, device=pred_h.device)

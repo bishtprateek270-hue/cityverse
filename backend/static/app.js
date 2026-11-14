@@ -2391,7 +2391,7 @@ async function loadCachedFrames() {
     return false;
 }
 
-async function runScenario(autoPlay = true) {
+async function runScenario(autoPlay = true, scrubToPeak = false) {
     const rainfall = parseFloat(sliderRain.value);
     const duration = parseFloat(sliderDuration.value);
     const drainage = parseFloat(sliderDrain.value) / 100.0;
@@ -2400,7 +2400,8 @@ async function runScenario(autoPlay = true) {
 
     try {
         elRunScenario.disabled = true;
-        document.getElementById("runScenarioLabel").innerText = "SIMULATING (2D Physics)...";
+        const modeLabel = (state.engineMode === "world_model") ? "Neural World Model (2ms)" : "Coupled 2D Physics";
+        document.getElementById("runScenarioLabel").innerText = `SIMULATING (${modeLabel})...`;
 
         const payload = {
             rainfall_mm_hr: rainfall,
@@ -2435,10 +2436,16 @@ async function runScenario(autoPlay = true) {
         state.historyEmsTime = summary.ems_time_min_series;
         updateSparklines();
 
-        // Start playback from T+00:00 to T+03:00
-        scrubToStep(0);
-        if (autoPlay) {
-            startPlayback();
+        if (scrubToPeak) {
+            // Jump directly to peak storm impact so the user immediately sees the visual consequence of their controls!
+            const peakStep = Math.min(24, state.totalSteps);
+            scrubToStep(peakStep);
+        } else {
+            // Start playback from T+00:00 to T+03:00
+            scrubToStep(0);
+            if (autoPlay) {
+                startPlayback();
+            }
         }
     } catch (err) {
         console.error("Run scenario error:", err);
@@ -2983,18 +2990,39 @@ function setupEventListeners() {
     if (btnEnvDay) btnEnvDay.addEventListener("click", () => setWeatherMode("day"));
     if (btnEnvNight) btnEnvNight.addEventListener("click", () => setWeatherMode("night"));
 
-    // Sliders
-    sliderRain.addEventListener("input", (e) => { 
-        valRain.innerText = `${e.target.value} mm/hr`; 
+    // Sliders with live atmospheric feedback & debounced auto-rollout
+    let sliderDebounceTimer = null;
+    function onSliderLiveChange() {
         if (state.weatherMode === "auto") {
-            const r = parseFloat(e.target.value);
+            const r = parseFloat(sliderRain.value);
             state.targetWeatherFactor = npClamp(r / 130.0, 0.0, 1.0);
         }
+        if (sliderDebounceTimer) clearTimeout(sliderDebounceTimer);
+        sliderDebounceTimer = setTimeout(() => {
+            runScenario(false, true); // Auto-rollout and jump directly to peak storm impact!
+        }, 450);
+    }
+
+    sliderRain.addEventListener("input", (e) => { 
+        valRain.innerText = `${e.target.value} mm/hr`; 
+        onSliderLiveChange();
     });
-    sliderDuration.addEventListener("input", (e) => { valDuration.innerText = `${parseFloat(e.target.value).toFixed(1)} hrs`; });
-    sliderDrain.addEventListener("input", (e) => { valDrain.innerText = `${e.target.value}%`; });
-    sliderPump1.addEventListener("input", (e) => { valPump1.innerText = `${e.target.value}%`; });
-    sliderPump2.addEventListener("input", (e) => { valPump2.innerText = `${e.target.value}%`; });
+    sliderDuration.addEventListener("input", (e) => { 
+        valDuration.innerText = `${parseFloat(e.target.value).toFixed(1)} hrs`; 
+        onSliderLiveChange();
+    });
+    sliderDrain.addEventListener("input", (e) => { 
+        valDrain.innerText = `${e.target.value}%`; 
+        onSliderLiveChange();
+    });
+    sliderPump1.addEventListener("input", (e) => { 
+        valPump1.innerText = `${e.target.value}%`; 
+        onSliderLiveChange();
+    });
+    sliderPump2.addEventListener("input", (e) => { 
+        valPump2.innerText = `${e.target.value}%`; 
+        onSliderLiveChange();
+    });
 
     // Dynamics Engine Selector
     modePhysicsBtn.addEventListener("click", () => setEngineMode("physics"));
@@ -3093,8 +3121,8 @@ async function handleNlpPrompt() {
             });
         }
 
-        // Run full scenario automatically
-        await runScenario(true);
+        // Run full scenario automatically and jump directly to peak storm impact
+        await runScenario(false, true);
     } catch (err) {
         console.error("NLP execute error:", err);
     }

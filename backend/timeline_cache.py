@@ -156,8 +156,8 @@ class TimelineTrajectoryCache:
             if engine_mode == "world_model" and state_mgr.world_model is not None:
                 try:
                     snap = state_mgr.step_world_model(dt_s=step_dt_s)
-                    # If neural checkpoint outputs degenerate zero depth during active rain, restore state and run exact physics
-                    if snap.get("max_water_depth_m", 0.0) < 0.02 and rainfall_mm_hr > 10.0:
+                    # Guard against degenerate zero depth only if neural model fails after prolonged deluge
+                    if s > 8 and snap.get("max_water_depth_m", 0.0) < 0.01 and rainfall_mm_hr > 60.0:
                         state_mgr.hydro.overland.h = h_prev
                         state_mgr.current_time_s -= step_dt_s
                         state_mgr.step_idx -= 1
