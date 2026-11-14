@@ -1203,6 +1203,7 @@ function buildRoadNetwork3D() {
     state.barriersGroup = new THREE.Group();
     state.roadGraph = {};
     state.reciprocalEdges = {};
+    state.nodePositions = {};
 
     // 1. Map directed (u, v) pairs to identify reciprocal opposing edges for U-turns & dual-lane traffic
     const edgeByUV = {};
@@ -1242,6 +1243,9 @@ function buildRoadNetwork3D() {
         const streetKey = p.u < p.v ? `${p.u}_${p.v}` : `${p.v}_${p.u}`;
 
         // Store directed edge in traffic graph
+        state.nodePositions[p.u] = startVec;
+        state.nodePositions[p.v] = endVec;
+
         state.roadGraph[p.edge_id] = {
             id: p.edge_id,
             start: startVec,
@@ -2035,12 +2039,94 @@ function spawnTrafficFleet(count = 180) {
     const candidateEdges = openDryEdges.length > 0 ? openDryEdges : Object.values(state.roadGraph);
     if (candidateEdges.length === 0) return;
 
-    const carColors = [0xf59e0b, 0xffffff, 0x38bdf8, 0xe2e8f0, 0x94a3b8, 0xef4444, 0x10b981];
+    // 1. Identify Priority Emergency Dispatch Hubs (Level-1 Trauma Centers & EMS Bases)
+    const hospitalNodes = [];
+    const emsNodes = [];
+    if (state.facilities && state.facilities.length > 0) {
+        state.facilities.forEach(fac => {
+            const p = fac.properties;
+            if (p.category === "hospitals" && p.nearest_road_node) {
+                hospitalNodes.push(p.nearest_road_node);
+            } else if (p.category === "ems_stations" && p.nearest_road_node) {
+                emsNodes.push(p.nearest_road_node);
+            }
+        });
+    }
+    if (hospitalNodes.length === 0) hospitalNodes.push("INT-0025", "INT-0101");
+    if (emsNodes.length === 0) emsNodes.push("INT-0016", "INT-0062", "INT-0118", "INT-0036");
 
-    // Spatial occupancy map per directed edge to prevent initial spawn overlap
+    const allEmergencyNodes = [...hospitalNodes, ...emsNodes];
+
+    // Find outgoing and connected edges directly touching or adjacent to these trauma/EMS nodes
+    const emergencyDispatchEdges = [];
+    allEmergencyNodes.forEach(nodeId => {
+        Object.values(state.roadGraph).forEach(edge => {
+            if ((edge.u === nodeId || edge.v === nodeId) && (edge.waterDepth || 0.0) < 0.30) {
+                emergencyDispatchEdges.push({ edge: edge, homeNode: nodeId });
+            }
+        });
+    });
+
+    // Supplement with edges within 350m of hospital nodes if sparse
+    if (emergencyDispatchEdges.length < 12) {
+        hospitalNodes.forEach(hNode => {
+            const hPos = state.nodePositions ? state.nodePositions[hNode] : null;
+            if (hPos) {
+                Object.values(state.roadGraph).forEach(edge => {
+                    if (edge.start.distanceTo(hPos) < 350.0 && (edge.waterDepth || 0.0) < 0.30) {
+                        emergencyDispatchEdges.push({ edge: edge, homeNode: hNode });
+                    }
+                });
+            }
+        });
+    }
+
+    const carColors = [0xf59e0b, 0xffffff, 0x38bdf8, 0xe2e8f0, 0x94a3b8, 0x3b82f6, 0x10b981];
     const edgeOccupancy = new Map();
-
     let spawned = 0;
+
+    // 2. Spawn Dedicated Emergency Fleet (Ambulances & Fire Rescue Trucks from Trauma Hubs)
+    const emergencyFleetCount = 12;
+    for (let i = 0; i < emergencyFleetCount; i++) {
+        let dispatchTarget;
+        if (emergencyDispatchEdges.length > 0) {
+            dispatchTarget = emergencyDispatchEdges[i % emergencyDispatchEdges.length];
+        } else {
+            const fallbackEdge = candidateEdges[Math.floor(Math.random() * candidateEdges.length)];
+            dispatchTarget = { edge: fallbackEdge, homeNode: hospitalNodes[0] };
+        }
+
+        const edge = dispatchTarget.edge;
+        const isAmbulance = (i % 2 === 0);
+        const emergencyType = isAmbulance ? "ambulance" : "fire_truck";
+        const mesh = isAmbulance ? createAmbulanceMesh() : createFireTruckMesh();
+
+        const candidateT = 0.08 + (i * 0.12) % 0.80;
+        if (!edgeOccupancy.has(edge.id)) edgeOccupancy.set(edge.id, []);
+        edgeOccupancy.get(edge.id).push(candidateT);
+
+        state.trafficGroup.add(mesh);
+        state.vehicles.push({
+            id: spawned,
+            mesh: mesh,
+            edgeId: edge.id,
+            t: candidateT,
+            baseSpeed: 21.0 + Math.random() * 4.0, // High-speed emergency response (80-95 km/h)
+            currentSpeed: 21.0,
+            isEmergency: true,
+            emergencyType: emergencyType,
+            waterClearance: isAmbulance ? 0.32 : 0.45,
+            homeHospitalNode: dispatchTarget.homeNode,
+            missionState: "responding",
+            missionTimer: 25.0 + Math.random() * 25.0,
+            isStalled: false,
+            waitingTimer: 0
+        });
+
+        spawned++;
+    }
+
+    // 3. Spawn Standard Passenger Cars across Open Dry Network
     let attempts = 0;
     while (spawned < count && attempts < count * 8) {
         attempts++;
@@ -2051,23 +2137,17 @@ function spawnTrafficFleet(count = 180) {
         }
         const existingTs = edgeOccupancy.get(edge.id);
 
-        // Pick a candidate position along directed edge with safe buffer spacing
         const candidateT = 0.12 + Math.random() * 0.76;
         const minGapT = 4.8 / Math.max(10.0, edge.length);
         const hasOverlap = existingTs.some(t => Math.abs(t - candidateT) < minGapT);
 
-        // At most 2 cars per directed lane to ensure free-flowing traffic
         if (hasOverlap || existingTs.length >= 2) {
             continue;
         }
 
         existingTs.push(candidateT);
-
-        const isEmergency = (Math.random() < 0.08); // 8% Ambulances / Fire
-        const color = isEmergency ? 0xef4444 : carColors[Math.floor(Math.random() * carColors.length)];
-
-        // 3D Car Body Mesh (compact scale to fit lane cleanly)
-        const carMesh = createCarMesh(color, isEmergency);
+        const color = carColors[Math.floor(Math.random() * carColors.length)];
+        const carMesh = createCarMesh(color);
         state.trafficGroup.add(carMesh);
 
         state.vehicles.push({
@@ -2075,9 +2155,11 @@ function spawnTrafficFleet(count = 180) {
             mesh: carMesh,
             edgeId: edge.id,
             t: candidateT,
-            baseSpeed: (13.0 + Math.random() * 8.0) * (isEmergency ? 1.4 : 1.0),
-            currentSpeed: 13.0,
-            isEmergency: isEmergency,
+            baseSpeed: 12.0 + Math.random() * 6.0,
+            currentSpeed: 12.0,
+            isEmergency: false,
+            emergencyType: null,
+            waterClearance: 0.15,
             isStalled: false,
             waitingTimer: 0
         });
@@ -2088,7 +2170,272 @@ function spawnTrafficFleet(count = 180) {
     state.scene.add(state.trafficGroup);
 }
 
-function createCarMesh(colorHex, isEmergency) {
+function createAmbulanceMesh() {
+    const group = new THREE.Group();
+
+    // 1. Lower Chassis & Wheels frame
+    const chassisGeom = new THREE.BoxGeometry(1.36, 0.22, 2.76);
+    const chassisMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+    const chassis = new THREE.Mesh(chassisGeom, chassisMat);
+    chassis.position.y = 0.24;
+    group.add(chassis);
+
+    // 2. Cab Section (White)
+    const cabGeom = new THREE.BoxGeometry(1.30, 0.62, 1.05);
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.25, metalness: 0.1 });
+    const cab = new THREE.Mesh(cabGeom, whiteMat);
+    cab.position.set(0, 0.58, 0.82);
+    cab.castShadow = true;
+    group.add(cab);
+
+    // 3. Dark Cab Glass / Windshield
+    const glassGeom = new THREE.BoxGeometry(1.18, 0.38, 0.58);
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 });
+    const glass = new THREE.Mesh(glassGeom, glassMat);
+    glass.position.set(0, 0.90, 0.85);
+    group.add(glass);
+
+    // 4. Main Medical Box Module (High-top Patient Compartment)
+    const boxGeom = new THREE.BoxGeometry(1.38, 0.98, 1.82);
+    const boxMesh = new THREE.Mesh(boxGeom, whiteMat);
+    boxMesh.position.set(0, 0.85, -0.45);
+    boxMesh.castShadow = true;
+    group.add(boxMesh);
+
+    // 5. Bold Emergency Red Reflective Stripes (Left & Right Flanks)
+    const redStripeMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3, emissive: 0x7f1d1d, emissiveIntensity: 0.3 });
+    const stripeGeom = new THREE.BoxGeometry(0.04, 0.16, 1.78);
+    const leftStripe = new THREE.Mesh(stripeGeom, redStripeMat);
+    leftStripe.position.set(-0.70, 0.78, -0.45);
+    const rightStripe = new THREE.Mesh(stripeGeom, redStripeMat);
+    rightStripe.position.set(0.70, 0.78, -0.45);
+    group.add(leftStripe);
+    group.add(rightStripe);
+
+    // 6. Medical Red Cross Emblems on Flanks & Rear Door
+    const crossVertGeom = new THREE.BoxGeometry(0.03, 0.30, 0.08);
+    const crossHorizGeom = new THREE.BoxGeometry(0.03, 0.08, 0.30);
+    const crossMat = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
+
+    // Left Cross
+    const lCrossV = new THREE.Mesh(crossVertGeom, crossMat);
+    lCrossV.position.set(-0.71, 0.92, -0.45);
+    const lCrossH = new THREE.Mesh(crossHorizGeom, crossMat);
+    lCrossH.position.set(-0.71, 0.92, -0.45);
+    group.add(lCrossV);
+    group.add(lCrossH);
+
+    // Right Cross
+    const rCrossV = new THREE.Mesh(crossVertGeom, crossMat);
+    rCrossV.position.set(0.71, 0.92, -0.45);
+    const rCrossH = new THREE.Mesh(crossHorizGeom, crossMat);
+    rCrossH.position.set(0.71, 0.92, -0.45);
+    group.add(rCrossV);
+    group.add(rCrossH);
+
+    // Rear Cross
+    const rearCrossV = new THREE.BoxGeometry(0.08, 0.28, 0.03);
+    const rearCrossH = new THREE.BoxGeometry(0.28, 0.08, 0.03);
+    const rcV = new THREE.Mesh(rearCrossV, crossMat);
+    rcV.position.set(0.0, 0.88, -1.37);
+    const rcH = new THREE.Mesh(rearCrossH, crossMat);
+    rcH.position.set(0.0, 0.88, -1.37);
+    group.add(rcV);
+    group.add(rcH);
+
+    // 7. Headlights & Taillights
+    const lightGeom = new THREE.BoxGeometry(0.22, 0.12, 0.08);
+    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffedd5 });
+    const hl1 = new THREE.Mesh(lightGeom, hlMat);
+    hl1.position.set(-0.46, 0.45, 1.36);
+    const hl2 = hl1.clone();
+    hl2.position.set(0.46, 0.45, 1.36);
+    group.add(hl1);
+    group.add(hl2);
+
+    const brakeMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+    const bl1 = new THREE.Mesh(lightGeom, brakeMat);
+    bl1.position.set(-0.48, 0.45, -1.37);
+    const bl2 = bl1.clone();
+    bl2.position.set(0.48, 0.45, -1.37);
+    group.add(bl1);
+    group.add(bl2);
+
+    // 8. Emergency Siren Lightbar & Beacons (Dual Red/Blue High-Intensity LEDs)
+    const barBaseGeom = new THREE.BoxGeometry(0.96, 0.06, 0.22);
+    const barBaseMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4 });
+    const barBase = new THREE.Mesh(barBaseGeom, barBaseMat);
+    barBase.position.set(0, 1.36, 0.65);
+    group.add(barBase);
+
+    const beaconGeom = new THREE.BoxGeometry(0.32, 0.14, 0.18);
+    const redBeaconMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff1111, emissiveIntensity: 2.0 });
+    const blueBeaconMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x00f0ff, emissiveIntensity: 2.0 });
+    const centerWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.5 });
+
+    const leftBeacon = new THREE.Mesh(beaconGeom, redBeaconMat);
+    leftBeacon.position.set(-0.34, 1.44, 0.65);
+    const rightBeacon = new THREE.Mesh(beaconGeom, blueBeaconMat);
+    rightBeacon.position.set(0.34, 1.44, 0.65);
+    const centerBeacon = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.16), centerWhiteMat);
+    centerBeacon.position.set(0, 1.44, 0.65);
+    group.add(leftBeacon);
+    group.add(rightBeacon);
+    group.add(centerBeacon);
+
+    // Rear Roof Corner Flashers
+    const cornerGeom = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+    const rearLeftBeacon = new THREE.Mesh(cornerGeom, redBeaconMat.clone());
+    rearLeftBeacon.position.set(-0.62, 1.36, -1.34);
+    const rearRightBeacon = new THREE.Mesh(cornerGeom, blueBeaconMat.clone());
+    rearRightBeacon.position.set(0.62, 1.36, -1.34);
+    group.add(rearLeftBeacon);
+    group.add(rearRightBeacon);
+
+    // 9. Dynamic Siren Road Strobe Light (Ground and Façade Illumination)
+    const sirenLight = new THREE.PointLight(0xff1111, 1.5, 14, 2.0);
+    sirenLight.position.set(0, 1.8, 0.4);
+    group.add(sirenLight);
+
+    group.userData = {
+        vehicleType: "ambulance",
+        leftBeacons: [leftBeacon, rearLeftBeacon],
+        rightBeacons: [rightBeacon, rearRightBeacon],
+        centerBeacon: centerBeacon,
+        sirenLight: sirenLight,
+        tailLights: bl1
+    };
+
+    return group;
+}
+
+function createFireTruckMesh() {
+    const group = new THREE.Group();
+
+    // 1. Heavy Chassis & Bumper Frame
+    const chassisGeom = new THREE.BoxGeometry(1.50, 0.28, 3.76);
+    const chassisMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+    const chassis = new THREE.Mesh(chassisGeom, chassisMat);
+    chassis.position.y = 0.26;
+    group.add(chassis);
+
+    // 2. Heavy Chrome Front Bumper & Grill
+    const bumperGeom = new THREE.BoxGeometry(1.52, 0.34, 0.24);
+    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.15, metalness: 0.8 });
+    const bumper = new THREE.Mesh(bumperGeom, chromeMat);
+    bumper.position.set(0, 0.36, 1.86);
+    group.add(bumper);
+
+    // 3. Front Crew Cab (Fire Engine Red)
+    const fireRedMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3, metalness: 0.2 });
+    const cabGeom = new THREE.BoxGeometry(1.46, 0.84, 1.36);
+    const cab = new THREE.Mesh(cabGeom, fireRedMat);
+    cab.position.set(0, 0.74, 1.15);
+    cab.castShadow = true;
+    group.add(cab);
+
+    // 4. Cab Windshield & Side Windows (Dark Glass)
+    const glassGeom = new THREE.BoxGeometry(1.34, 0.44, 0.65);
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 });
+    const glass = new THREE.Mesh(glassGeom, glassMat);
+    glass.position.set(0, 1.05, 1.25);
+    group.add(glass);
+
+    // 5. Heavy Equipment Bay Module (Rear Body)
+    const bayGeom = new THREE.BoxGeometry(1.46, 1.12, 2.30);
+    const bayMesh = new THREE.Mesh(bayGeom, fireRedMat);
+    bayMesh.position.set(0, 0.86, -0.62);
+    bayMesh.castShadow = true;
+    group.add(bayMesh);
+
+    // 6. Silver Roll-Up Equipment Tool Bays (Left & Right Flanks)
+    const bayDoorMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.4, metalness: 0.5 });
+    const bayDoorGeom = new THREE.BoxGeometry(0.04, 0.68, 1.45);
+    const leftDoor = new THREE.Mesh(bayDoorGeom, bayDoorMat);
+    leftDoor.position.set(-0.74, 0.85, -0.62);
+    const rightDoor = new THREE.Mesh(bayDoorGeom, bayDoorMat);
+    rightDoor.position.set(0.74, 0.85, -0.62);
+    group.add(leftDoor);
+    group.add(rightDoor);
+
+    // 7. Top-Mounted Chrome Heavy Rescue Ladder
+    const ladderGroup = new THREE.Group();
+    const railGeom = new THREE.BoxGeometry(0.04, 0.06, 2.50);
+    const lRail = new THREE.Mesh(railGeom, chromeMat);
+    lRail.position.set(-0.35, 1.50, -0.55);
+    const rRail = new THREE.Mesh(railGeom, chromeMat);
+    rRail.position.set(0.35, 1.50, -0.55);
+    ladderGroup.add(lRail);
+    ladderGroup.add(rRail);
+
+    const rungGeom = new THREE.BoxGeometry(0.66, 0.03, 0.03);
+    for (let rz = -1.6; rz <= 0.5; rz += 0.35) {
+        const rung = new THREE.Mesh(rungGeom, chromeMat);
+        rung.position.set(0, 1.50, rz);
+        ladderGroup.add(rung);
+    }
+    group.add(ladderGroup);
+
+    // 8. Heavy Dual Headlights & Tail Lights
+    const lightGeom = new THREE.BoxGeometry(0.24, 0.14, 0.08);
+    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const hl1 = new THREE.Mesh(lightGeom, hlMat);
+    hl1.position.set(-0.52, 0.48, 1.88);
+    const hl2 = hl1.clone();
+    hl2.position.set(0.52, 0.48, 1.88);
+    group.add(hl1);
+    group.add(hl2);
+
+    const brakeMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+    const bl1 = new THREE.Mesh(lightGeom, brakeMat);
+    bl1.position.set(-0.52, 0.48, -1.78);
+    const bl2 = bl1.clone();
+    bl2.position.set(0.52, 0.48, -1.78);
+    group.add(bl1);
+    group.add(bl2);
+
+    // 9. Quadruple High-Intensity Siren Beacons (Cab Roof & Rear Upper Corners)
+    const beaconGeom = new THREE.BoxGeometry(0.34, 0.16, 0.20);
+    const redBeaconMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff1111, emissiveIntensity: 2.2 });
+    const blueBeaconMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x00f0ff, emissiveIntensity: 2.2 });
+    const centerWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffedd5, emissive: 0xffffff, emissiveIntensity: 1.8 });
+
+    const cabLeftBeacon = new THREE.Mesh(beaconGeom, redBeaconMat);
+    cabLeftBeacon.position.set(-0.48, 1.58, 1.05);
+    const cabRightBeacon = new THREE.Mesh(beaconGeom, blueBeaconMat);
+    cabRightBeacon.position.set(0.48, 1.58, 1.05);
+    const cabCenterBeacon = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.14, 0.18), centerWhiteMat);
+    cabCenterBeacon.position.set(0, 1.58, 1.05);
+    group.add(cabLeftBeacon);
+    group.add(cabRightBeacon);
+    group.add(cabCenterBeacon);
+
+    const cornerGeom = new THREE.BoxGeometry(0.14, 0.14, 0.14);
+    const rearLeftBeacon = new THREE.Mesh(cornerGeom, redBeaconMat.clone());
+    rearLeftBeacon.position.set(-0.68, 1.46, -1.74);
+    const rearRightBeacon = new THREE.Mesh(cornerGeom, blueBeaconMat.clone());
+    rearRightBeacon.position.set(0.68, 1.46, -1.74);
+    group.add(rearLeftBeacon);
+    group.add(rearRightBeacon);
+
+    // 10. Dynamic Ground Strobe Light
+    const sirenLight = new THREE.PointLight(0xff1111, 1.8, 16, 2.0);
+    sirenLight.position.set(0, 2.0, 0.8);
+    group.add(sirenLight);
+
+    group.userData = {
+        vehicleType: "fire_truck",
+        leftBeacons: [cabLeftBeacon, rearLeftBeacon],
+        rightBeacons: [cabRightBeacon, rearRightBeacon],
+        centerBeacon: cabCenterBeacon,
+        sirenLight: sirenLight,
+        tailLights: bl1
+    };
+
+    return group;
+}
+
+function createCarMesh(colorHex) {
     const group = new THREE.Group();
 
     // Body (width: 1.25, height: 0.55, length: 2.6 - fits neatly into designated lane)
@@ -2124,17 +2471,11 @@ function createCarMesh(colorHex, isEmergency) {
     bl2.position.set(0.42, 0.45, -1.3);
     group.add(bl1);
     group.add(bl2);
-    group.userData.tailLights = bl1;
 
-    // Emergency Siren
-    if (isEmergency) {
-        const sirenGeom = new THREE.CylinderGeometry(0.18, 0.18, 0.25, 8);
-        const sirenMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
-        const siren = new THREE.Mesh(sirenGeom, sirenMat);
-        siren.position.set(0, 1.15, -0.15);
-        group.add(siren);
-        group.userData.siren = siren;
-    }
+    group.userData = {
+        vehicleType: "car",
+        tailLights: bl1
+    };
 
     return group;
 }
@@ -2149,7 +2490,7 @@ function updateTraffic(dt) {
         laneGroups.get(veh.edgeId).push(veh);
     });
 
-    // 2. Intra-Lane Car-Following Model (Intelligent Driver Model / Anti-Tailgating)
+    // 2. Intra-Lane Car-Following Model (Intelligent Driver Model & Emergency Siren Priority)
     laneGroups.forEach((cars, edgeId) => {
         if (cars.length <= 1) return;
         const edge = state.roadGraph[edgeId];
@@ -2158,21 +2499,23 @@ function updateTraffic(dt) {
         // Sort cars along travel direction: largest t is in front (0 -> 1)
         cars.sort((a, b) => a.t - b.t);
 
-        // Apply car-following headway constraint from rear to front
         for (let i = 0; i < cars.length - 1; i++) {
             const follower = cars[i];
             const leader = cars[i + 1];
 
             const headwayDist = (leader.t - follower.t) * edge.length;
-            const safeGap = 5.0;       // Buffer to start matching speed (meters in 3D)
-            const stopGap = 3.4;       // Bumper-to-bumper stopping distance (strictly no overlap)
+            const safeGap = follower.isEmergency ? 4.2 : 5.0;
+            const stopGap = follower.isEmergency ? 3.0 : 3.4;
+
+            // If an emergency vehicle is approaching from behind, civilian car yields / pulls forward
+            if (follower.isEmergency && !leader.isEmergency && headwayDist < 12.0) {
+                leader.currentSpeed = Math.max(leader.currentSpeed, Math.min(leader.baseSpeed * 1.1, follower.currentSpeed));
+            }
 
             if (headwayDist < safeGap) {
-                // Decelerate trailing vehicle to match leader
                 const speedFactor = Math.max(0.0, (headwayDist - stopGap) / (safeGap - stopGap));
                 follower.currentSpeed = Math.min(follower.currentSpeed, leader.currentSpeed * speedFactor);
 
-                // Hard anti-overlap distance enforcement
                 if (headwayDist < stopGap) {
                     follower.currentSpeed = 0.0;
                     const minGapT = stopGap / Math.max(10.0, edge.length);
@@ -2188,33 +2531,33 @@ function updateTraffic(dt) {
         if (!edge) return;
 
         const water = edge.waterDepth || 0.0;
-        const isRoadClosed = edge.isClosed || (water >= 0.15);
+        const clearance = veh.waterClearance || 0.15;
 
         // Hydrodynamic Passability & Hazard Reaction
-        if (isRoadClosed) {
-            if (!veh.isEmergency) {
-                // Approaching the barricade (t >= 0.78) or facing flood water:
+        if (!veh.isEmergency) {
+            // Passenger Cars: Barricaded at 0.15m water depth
+            const isRoadClosed = edge.isClosed || (water >= 0.15);
+
+            if (isRoadClosed) {
                 const approachingBarricade = (veh.t >= 0.78);
                 const facingWater = (water >= 0.15);
 
                 if (approachingBarricade || facingWater) {
-                    // Decelerate smoothly to a stop before the barricade
                     veh.currentSpeed = Math.max(0.0, veh.currentSpeed - 14.0 * dt);
                     veh.waitingTimer += dt;
 
-                    // Execute smooth U-turn into reciprocal opposing lane to retreat back towards dry intersection
+                    // Smooth U-turn into reciprocal opposing lane to retreat back towards dry intersection
                     if (veh.currentSpeed <= 0.3 || veh.waitingTimer > 0.4) {
                         const returnEdgeId = state.reciprocalEdges[veh.edgeId];
                         const returnEdge = returnEdgeId ? state.roadGraph[returnEdgeId] : null;
 
                         if (returnEdge) {
-                            // Switch to opposing lane: physical position is exactly (1.0 - t)!
                             veh.edgeId = returnEdge.id;
                             veh.t = npClamp(1.0 - veh.t, 0.05, 0.95);
                             veh.currentSpeed = veh.baseSpeed * 0.55;
                             veh.isStalled = false;
                             veh.waitingTimer = 0;
-                            edge = returnEdge; // update reference for step 4
+                            edge = returnEdge;
                         } else {
                             veh.isStalled = true;
                         }
@@ -2222,45 +2565,76 @@ function updateTraffic(dt) {
                         veh.isStalled = true;
                     }
                 } else {
-                    // Traveling back along return lane away from closure towards open intersection
                     veh.currentSpeed = Math.min(veh.baseSpeed * 0.70, veh.currentSpeed + 7.0 * dt);
                     veh.isStalled = false;
                     veh.waitingTimer = 0;
                 }
 
-                // If completely stranded in deep flood (>0.30m), hazard lights flash
                 if (water >= 0.30) {
                     veh.currentSpeed = 0.0;
                     veh.isStalled = true;
                 }
 
-                // Flash hazard lights while stalled
+                // Flash amber hazard lights while stalled
                 if (veh.isStalled && veh.mesh.userData.tailLights) {
                     const blink = Math.floor(Date.now() / 320) % 2 === 0;
                     veh.mesh.userData.tailLights.material.color.setHex(blink ? 0xf59e0b : 0xef4444);
                 }
+            } else if (water >= 0.05) {
+                // Shallow Ponding
+                veh.currentSpeed = Math.min(veh.currentSpeed, veh.baseSpeed * 0.50);
+                veh.isStalled = false;
+                veh.waitingTimer = 0;
             } else {
-                // Emergency Ambulance can navigate moderate flooding (<0.30m)
-                if (water >= 0.30) {
-                    veh.currentSpeed = 0.0;
-                    veh.isStalled = true;
-                } else {
-                    veh.currentSpeed = veh.baseSpeed * 0.40;
-                    veh.isStalled = false;
+                // Free flow
+                if (veh.currentSpeed < veh.baseSpeed * 0.95) {
+                    veh.currentSpeed = Math.min(veh.baseSpeed, veh.currentSpeed + 8.0 * dt);
                 }
+                veh.isStalled = false;
+                veh.waitingTimer = 0;
             }
-        } else if (water >= 0.05) {
-            // Shallow Ponding: Speed degraded (Pregnolato curve)
-            veh.currentSpeed = Math.min(veh.currentSpeed, veh.baseSpeed * 0.50);
-            veh.isStalled = false;
-            veh.waitingTimer = 0;
         } else {
-            // Open Dry Road: Smoothly regain free flow speed
-            if (veh.currentSpeed < veh.baseSpeed * 0.95) {
-                veh.currentSpeed = Math.min(veh.baseSpeed, veh.currentSpeed + 8.0 * dt);
+            // Specialized Emergency Vehicles (Ambulances & Heavy Fire Engines)
+            if (water >= clearance) {
+                // Deep water exceeds vehicle clearance: execute tactical U-turn detour
+                veh.currentSpeed = Math.max(0.0, veh.currentSpeed - 16.0 * dt);
+                veh.waitingTimer += dt;
+
+                if (veh.currentSpeed <= 0.3 || veh.waitingTimer > 0.4) {
+                    const returnEdgeId = state.reciprocalEdges[veh.edgeId];
+                    const returnEdge = returnEdgeId ? state.roadGraph[returnEdgeId] : null;
+
+                    if (returnEdge) {
+                        veh.edgeId = returnEdge.id;
+                        veh.t = npClamp(1.0 - veh.t, 0.05, 0.95);
+                        veh.currentSpeed = veh.baseSpeed * 0.60;
+                        veh.isStalled = false;
+                        veh.waitingTimer = 0;
+                        edge = returnEdge;
+                    } else {
+                        veh.isStalled = true;
+                    }
+                } else {
+                    veh.isStalled = true;
+                }
+            } else if (water >= 0.15) {
+                // Road barricaded to civilian cars, but emergency vehicle pushes through flood water!
+                veh.currentSpeed = Math.min(veh.baseSpeed * 0.65, veh.currentSpeed + 8.0 * dt);
+                veh.isStalled = false;
+                veh.waitingTimer = 0;
+            } else if (water >= 0.05) {
+                // Shallow ponding: fast priority passage
+                veh.currentSpeed = Math.min(veh.baseSpeed * 0.82, veh.currentSpeed + 10.0 * dt);
+                veh.isStalled = false;
+                veh.waitingTimer = 0;
+            } else {
+                // Dry road: full response speed
+                if (veh.currentSpeed < veh.baseSpeed) {
+                    veh.currentSpeed = Math.min(veh.baseSpeed, veh.currentSpeed + 12.0 * dt);
+                }
+                veh.isStalled = false;
+                veh.waitingTimer = 0;
             }
-            veh.isStalled = false;
-            veh.waitingTimer = 0;
         }
 
         // Kinematic Position Step forward along edge (0 -> 1)
@@ -2272,35 +2646,110 @@ function updateTraffic(dt) {
             const hitNode = edge.v;
             const oppEdgeId = state.reciprocalEdges[edge.id];
 
-            // Find outgoing edges from this intersection that are open and dry
-            const availableOutgoing = Object.values(state.roadGraph).filter(e => 
-                e.u === hitNode && 
-                e.id !== oppEdgeId && 
-                !e.isClosed && 
-                (e.waterDepth || 0.0) < 0.05
-            );
+            if (!veh.isEmergency) {
+                // Civilian Passenger Cars: pick random open dry outgoing edge
+                const availableOutgoing = Object.values(state.roadGraph).filter(e => 
+                    e.u === hitNode && 
+                    e.id !== oppEdgeId && 
+                    !e.isClosed && 
+                    (e.waterDepth || 0.0) < 0.05
+                );
 
-            if (availableOutgoing.length > 0) {
-                const nextEdge = availableOutgoing[Math.floor(Math.random() * availableOutgoing.length)];
-                veh.edgeId = nextEdge.id;
-                veh.t = 0.02; // Seamless continuous handoff at intersection
-                veh.currentSpeed = veh.baseSpeed * 0.75;
-                veh.isStalled = false;
-                veh.waitingTimer = 0;
-                edge = nextEdge; // update reference for step 4
-            } else {
-                // Dead end or surrounded by barricades: U-turn back onto return edge
-                const returnEdgeId = state.reciprocalEdges[edge.id];
-                if (returnEdgeId) {
-                    veh.edgeId = returnEdgeId;
-                    veh.t = 0.05;
-                    veh.currentSpeed = veh.baseSpeed * 0.5;
+                if (availableOutgoing.length > 0) {
+                    const nextEdge = availableOutgoing[Math.floor(Math.random() * availableOutgoing.length)];
+                    veh.edgeId = nextEdge.id;
+                    veh.t = 0.02;
+                    veh.currentSpeed = veh.baseSpeed * 0.75;
                     veh.isStalled = false;
-                    edge = state.roadGraph[returnEdgeId];
+                    veh.waitingTimer = 0;
+                    edge = nextEdge;
                 } else {
-                    veh.currentSpeed = 0.0;
-                    veh.isStalled = true;
-                    veh.t = 0.98;
+                    const returnEdgeId = state.reciprocalEdges[edge.id];
+                    if (returnEdgeId) {
+                        veh.edgeId = returnEdgeId;
+                        veh.t = 0.05;
+                        veh.currentSpeed = veh.baseSpeed * 0.5;
+                        veh.isStalled = false;
+                        edge = state.roadGraph[returnEdgeId];
+                    } else {
+                        veh.currentSpeed = 0.0;
+                        veh.isStalled = true;
+                        veh.t = 0.98;
+                    }
+                }
+            } else {
+                // Emergency Vehicles: Tactical Dynamic Dispatch Routing
+                const passableOutgoing = Object.values(state.roadGraph).filter(e => 
+                    e.u === hitNode && 
+                    e.id !== oppEdgeId && 
+                    (e.waterDepth || 0.0) < clearance
+                );
+
+                // Update mission lifecycle
+                veh.missionTimer -= 4.0;
+                if (veh.missionTimer <= 0) {
+                    if (veh.missionState === "responding") {
+                        veh.missionState = "returning";
+                    } else {
+                        veh.missionState = "responding";
+                        veh.missionTimer = 25.0 + Math.random() * 25.0;
+                    }
+                }
+
+                let selectedEdge = null;
+                if (passableOutgoing.length > 0) {
+                    if (veh.missionState === "responding") {
+                        // Priority 1: Seek active incident edges (standing water < clearance)
+                        const incidentEdges = passableOutgoing.filter(e => (e.waterDepth || 0.0) > 0.02);
+                        if (incidentEdges.length > 0) {
+                            selectedEdge = incidentEdges[Math.floor(Math.random() * incidentEdges.length)];
+                        } else {
+                            // Priority 2: Follow fastest arterial open edge
+                            selectedEdge = passableOutgoing[Math.floor(Math.random() * passableOutgoing.length)];
+                        }
+                    } else {
+                        // Returning to Level-1 Trauma Center / EMS Base
+                        const homePos = (state.nodePositions && veh.homeHospitalNode) ? state.nodePositions[veh.homeHospitalNode] : null;
+                        if (homePos) {
+                            let bestDist = Infinity;
+                            passableOutgoing.forEach(e => {
+                                const dist = e.end.distanceTo(homePos);
+                                if (dist < bestDist) {
+                                    bestDist = dist;
+                                    selectedEdge = e;
+                                }
+                            });
+                            // If reached hospital zone (<80m), reload mission to responding
+                            if (bestDist < 80.0) {
+                                veh.missionState = "responding";
+                                veh.missionTimer = 30.0 + Math.random() * 20.0;
+                            }
+                        } else {
+                            selectedEdge = passableOutgoing[Math.floor(Math.random() * passableOutgoing.length)];
+                        }
+                    }
+                }
+
+                if (selectedEdge) {
+                    veh.edgeId = selectedEdge.id;
+                    veh.t = 0.02;
+                    veh.currentSpeed = veh.baseSpeed * 0.85;
+                    veh.isStalled = false;
+                    veh.waitingTimer = 0;
+                    edge = selectedEdge;
+                } else {
+                    const returnEdgeId = state.reciprocalEdges[edge.id];
+                    if (returnEdgeId) {
+                        veh.edgeId = returnEdgeId;
+                        veh.t = 0.05;
+                        veh.currentSpeed = veh.baseSpeed * 0.65;
+                        veh.isStalled = false;
+                        edge = state.roadGraph[returnEdgeId];
+                    } else {
+                        veh.currentSpeed = 0.0;
+                        veh.isStalled = true;
+                        veh.t = 0.98;
+                    }
                 }
             }
         }
@@ -2315,7 +2764,6 @@ function updateTraffic(dt) {
         const up = new THREE.Vector3(0, 1, 0);
         const right = new THREE.Vector3().crossVectors(forward, up).normalize();
 
-        // Driving on the right-hand lane (offset along +right):
         const laneOffsetDist = edge.width * 0.26;
         const lateralShift = right.clone().multiplyScalar(laneOffsetDist);
 
@@ -2350,10 +2798,54 @@ function updateTraffic(dt) {
         }
         veh.mesh.lookAt(lookTarget);
 
-        // Flashing emergency siren
-        if (veh.isEmergency && veh.mesh.userData.siren) {
-            const isRed = Math.floor(Date.now() / 150) % 2 === 0;
-            veh.mesh.userData.siren.material.color.setHex(isRed ? 0xef4444 : 0x00f0ff);
+        // 5. Dual-Frequency Alternating Siren Strobes & Dynamic Ground Illumination
+        if (veh.isEmergency && veh.mesh.userData) {
+            const ud = veh.mesh.userData;
+            // 4-Phase rapid high-intensity emergency strobe cadence (Left-Left-Right-Right)
+            const strobePhase = Math.floor(Date.now() / 90) % 4;
+            const isLeftActive = (strobePhase === 0 || strobePhase === 1);
+            const isRightActive = (strobePhase === 2 || strobePhase === 3);
+
+            // Left Red Strobes
+            if (ud.leftBeacons && ud.leftBeacons.length > 0) {
+                const redColor = isLeftActive ? 0xff2222 : 0x3b0707;
+                const redEmissive = isLeftActive ? 0xff0000 : 0x000000;
+                const redInt = isLeftActive ? 3.5 : 0.0;
+                ud.leftBeacons.forEach(b => {
+                    b.material.color.setHex(redColor);
+                    b.material.emissive.setHex(redEmissive);
+                    b.material.emissiveIntensity = redInt;
+                });
+            }
+
+            // Right Blue Strobes
+            if (ud.rightBeacons && ud.rightBeacons.length > 0) {
+                const blueColor = isRightActive ? 0x00d9ff : 0x03223f;
+                const blueEmissive = isRightActive ? 0x0088ff : 0x000000;
+                const blueInt = isRightActive ? 3.5 : 0.0;
+                ud.rightBeacons.forEach(b => {
+                    b.material.color.setHex(blueColor);
+                    b.material.emissive.setHex(blueEmissive);
+                    b.material.emissiveIntensity = blueInt;
+                });
+            }
+
+            // Center Strobe
+            if (ud.centerBeacon) {
+                const centerActive = (strobePhase === 0 || strobePhase === 2);
+                ud.centerBeacon.material.emissiveIntensity = centerActive ? 2.5 : 0.1;
+            }
+
+            // Dynamic PointLight Ground Strobe (Casts red/blue pulses on road and buildings)
+            if (ud.sirenLight) {
+                if (isLeftActive) {
+                    ud.sirenLight.color.setHex(0xff1111);
+                    ud.sirenLight.intensity = 1.6;
+                } else {
+                    ud.sirenLight.color.setHex(0x0088ff);
+                    ud.sirenLight.intensity = 1.6;
+                }
+            }
         }
     });
 }
@@ -3230,6 +3722,19 @@ function handle3DMouseMove(e) {
         const depthGrid = state.currentFrame ? state.currentFrame.surface_depth_grid : null;
         const water = depthGrid ? depthGrid[row][col] : 0.0;
 
+        // Proximity detection for active emergency vehicles (within 6 meters in 3D scene space)
+        let nearbyEmergency = null;
+        if (state.vehicles && state.vehicles.length > 0) {
+            nearbyEmergency = state.vehicles.find(v => v.isEmergency && v.mesh && v.mesh.position.distanceTo(pt) < 6.0);
+        }
+
+        let emergencyFleetRow = "";
+        if (nearbyEmergency) {
+            const badgeType = nearbyEmergency.emergencyType === "fire_truck" ? "🚒 Heavy Fire Rescue Squad" : "🚑 Trauma Life-Support Ambulance";
+            const missionTxt = nearbyEmergency.missionState === "responding" ? "PRIORITY DISPATCH (Incident Response)" : "PATIENT TRANSPORT (Returning to Hospital)";
+            emergencyFleetRow = `<div class="inspector-row" style="border-top:1px dashed rgba(239,68,68,0.4); margin-top:5px; padding-top:4px;"><span style="color:#ef4444;font-weight:600">${badgeType}</span><strong style="color:#00f0ff">${missionTxt}</strong></div>`;
+        }
+
         inspectorCard.classList.remove("hidden");
         inspectorContent.innerHTML = `
             <div class="inspector-row"><span>3D Coordinates:</span><strong>(${wx}m, ${wy}m)</strong></div>
@@ -3237,6 +3742,7 @@ function handle3DMouseMove(e) {
             <div class="inspector-row"><span>Water Inundation:</span><strong style="color: ${water > 0.15 ? 'var(--danger-red)' : (water > 0.04 ? 'var(--accent-cyan)' : 'var(--text-primary)')}">${(water * 100).toFixed(1)} cm</strong></div>
             <div class="inspector-row"><span>Road Traffic:</span><strong style="color: ${water >= 0.15 ? 'var(--danger-red)' : 'var(--success-green)'}">${water >= 0.15 ? 'STALLED (Flooded)' : 'FLOWING (Open)'}</strong></div>
             <div class="inspector-row"><span>Emergency Route:</span><strong style="color: ${water >= 0.30 ? 'var(--danger-red)' : 'var(--success-green)'}">${water >= 0.30 ? 'IMPASSABLE' : 'PASSABLE'}</strong></div>
+            ${emergencyFleetRow}
         `;
     } else {
         inspectorCard.classList.add("hidden");
@@ -3262,7 +3768,7 @@ function updateTelemetry(snap) {
     const closedRoads = snap.closed_roads_passenger || 0;
     const closedEmerg = snap.closed_roads_emergency || 0;
     kpiClosedRoads.innerText = `${closedRoads} Closed`;
-    kpiClosedEmergency.innerText = `${closedEmerg} emergency severed`;
+    kpiClosedEmergency.innerText = `${closedEmerg} emergency severed | 12 EMS Fleet Active`;
 
     const emsTime = snap.avg_ems_response_min || 5.2;
     const emsCov = snap.ems_coverage_pct || 100.0;
