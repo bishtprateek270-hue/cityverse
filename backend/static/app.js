@@ -158,17 +158,17 @@ async function init() {
         // 3. Build 3D City Environment (Terrain, Buildings, Roads, Facilities, Rain)
         build3DCityScene();
 
-        // 4. Spawn Moving Traffic Fleet
-        spawnTrafficFleet(180);
-
-        // 5. Setup UI & Camera Listeners
+        // 4. Setup UI & Camera Listeners
         setupEventListeners();
 
-        // 6. Fast Load Pre-Computed Simulation Trajectory
+        // 5. Fast Load Pre-Computed Simulation Trajectory FIRST (calculates road flooding & closures)
         const loaded = await loadCachedFrames();
         if (!loaded) {
             await runScenario(false);
         }
+
+        // 6. Spawn Moving Traffic Fleet strictly on Open Dry Roads
+        spawnTrafficFleet(180);
 
         // 7. Start Animation & Physics Render Loop
         animate();
@@ -874,8 +874,8 @@ function buildRoadNetwork3D() {
             waterDepth: 0.0
         };
 
-        // 3D Road Ribbon with Dual-Lane Markings & Center Divider Line
-        const roadGroup = createRoadRibbon(startVec, endVec, width, isHighway ? 0x94a3b8 : 0x334155);
+        // 3D Road Ribbon with Dual-Lane Markings & Center Divider Line (terrain conforming)
+        const roadGroup = createRoadRibbon(coords[0], coords[1], p1, p2, width, isHighway ? 0x94a3b8 : 0x334155, isBridge);
         roadGroup.userData = { 
             edgeId: p.edge_id, 
             baseColor: isHighway ? 0x94a3b8 : 0x334155, 
@@ -891,8 +891,8 @@ function buildRoadNetwork3D() {
             state.roadLinesGroup.add(bridgePillars);
         }
 
-        // Roadblock Barrier Pair (placed at both entrances of road segment)
-        const barrierPair = createRoadBarricadePair(startVec, endVec, width);
+        // Roadblock Barrier Pair (placed at both entrances of road segment at sampled elevation)
+        const barrierPair = createRoadBarricadePair(coords[0], coords[1], p1, p2, width, isBridge);
         barrierPair.userData = { edgeId: p.edge_id };
         barrierPair.visible = false;
         state.barriersGroup.add(barrierPair);
@@ -917,88 +917,170 @@ function createBridgeSupportPillars(p1, p2) {
     return group;
 }
 
-function createRoadRibbon(p1, p2, width, colorHex) {
+function createRoadRibbon(coord1, coord2, p1, p2, width, colorHex, isBridge) {
     const group = new THREE.Group();
-    const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
+    const dx = p2.x - p1.x;
+    const dz = p2.z - p1.z;
+    const horizLen = Math.hypot(dx, dz);
+    if (horizLen < 0.001) return group;
+
+    const dir = new THREE.Vector3(dx, 0, dz).normalize();
     const up = new THREE.Vector3(0, 1, 0);
     const side = new THREE.Vector3().crossVectors(dir, up).normalize().multiplyScalar(width / 2.0);
+    const cSide = side.clone().normalize().multiplyScalar(0.09); // yellow divider line half-width (0.18m total width)
 
-    // 1. Asphalt Road Surface Quad
-    const v1 = new THREE.Vector3().subVectors(p1, side);
-    const v2 = new THREE.Vector3().addVectors(p1, side);
-    const v3 = new THREE.Vector3().addVectors(p2, side);
-    const v4 = new THREE.Vector3().subVectors(p2, side);
+    // Subdivide road into 2.5m elevation-sampled slices so the deck perfectly conforms to the terrain
+    const numSegments = Math.max(3, Math.ceil(horizLen / 2.5));
 
-    const geom = new THREE.BufferGeometry();
-    const vertices = new Float32Array([
-        v1.x, v1.y, v1.z,  v2.x, v2.y, v2.z,  v3.x, v3.y, v3.z,
-        v1.x, v1.y, v1.z,  v3.x, v3.y, v3.z,  v4.x, v4.y, v4.z
-    ]);
-    geom.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
-    geom.computeVertexNormals();
+    // Each quad has 2 triangles = 6 vertices. 3 floats per vertex (x, y, z)
+    const asphaltVerts = new Float32Array(numSegments * 18);
+    const centerVerts = new Float32Array(numSegments * 18);
 
-    const mat = new THREE.MeshStandardMaterial({
+    const pts = [];
+    const cPts = [];
+    const bridgeY = isBridge ? (Math.max(
+        getTerrainElevation(coord1[0], coord1[1]),
+        getTerrainElevation(coord2[0], coord2[1])
+    ) + 2.5) : 0;
+
+    for (let k = 0; k <= numSegments; k++) {
+        const s = k / numSegments;
+        const wx = coord1[0] * (1.0 - s) + coord2[0] * s;
+        const wy = coord1[1] * (1.0 - s) + coord2[1] * s;
+        const px = p1.x * (1.0 - s) + p2.x * s;
+        const pz = p1.z * (1.0 - s) + p2.z * s;
+
+        // Road sits strictly +0.38m above terrain elevation contours so it NEVER clips or sinks under ground
+        const py = isBridge ? bridgeY : (getTerrainElevation(wx, wy) + 0.38);
+
+        pts.push({
+            lx: px - side.x, ly: py, lz: pz - side.z,
+            rx: px + side.x, ry: py, rz: pz + side.z
+        });
+
+        cPts.push({
+            lx: px - cSide.x, ly: py + 0.03, lz: pz - cSide.z,
+            rx: px + cSide.x, ry: py + 0.03, rz: pz + cSide.z
+        });
+    }
+
+    let aIdx = 0;
+    let cIdx = 0;
+    for (let k = 0; k < numSegments; k++) {
+        const pA = pts[k];
+        const pB = pts[k + 1];
+
+        // Triangle 1: left[k], right[k], right[k+1]
+        asphaltVerts[aIdx++] = pA.lx; asphaltVerts[aIdx++] = pA.ly; asphaltVerts[aIdx++] = pA.lz;
+        asphaltVerts[aIdx++] = pA.rx; asphaltVerts[aIdx++] = pA.ry; asphaltVerts[aIdx++] = pA.rz;
+        asphaltVerts[aIdx++] = pB.rx; asphaltVerts[aIdx++] = pB.ry; asphaltVerts[aIdx++] = pB.rz;
+
+        // Triangle 2: left[k], right[k+1], left[k+1]
+        asphaltVerts[aIdx++] = pA.lx; asphaltVerts[aIdx++] = pA.ly; asphaltVerts[aIdx++] = pA.lz;
+        asphaltVerts[aIdx++] = pB.rx; asphaltVerts[aIdx++] = pB.ry; asphaltVerts[aIdx++] = pB.rz;
+        asphaltVerts[aIdx++] = pB.lx; asphaltVerts[aIdx++] = pB.ly; asphaltVerts[aIdx++] = pB.lz;
+
+        // Center divider line
+        const cpA = cPts[k];
+        const cpB = cPts[k + 1];
+
+        centerVerts[cIdx++] = cpA.lx; centerVerts[cIdx++] = cpA.ly; centerVerts[cIdx++] = cpA.lz;
+        centerVerts[cIdx++] = cpA.rx; centerVerts[cIdx++] = cpA.ry; centerVerts[cIdx++] = cpA.rz;
+        centerVerts[cIdx++] = cpB.rx; centerVerts[cIdx++] = cpB.ry; centerVerts[cIdx++] = cpB.rz;
+
+        centerVerts[cIdx++] = cpA.lx; centerVerts[cIdx++] = cpA.ly; centerVerts[cIdx++] = cpA.lz;
+        centerVerts[cIdx++] = cpB.rx; centerVerts[cIdx++] = cpB.ry; centerVerts[cIdx++] = cpB.rz;
+        centerVerts[cIdx++] = cpB.lx; centerVerts[cIdx++] = cpB.ly; centerVerts[cIdx++] = cpB.lz;
+    }
+
+    const asphaltGeom = new THREE.BufferGeometry();
+    asphaltGeom.setAttribute("position", new THREE.BufferAttribute(asphaltVerts, 3));
+    asphaltGeom.computeVertexNormals();
+
+    const asphaltMat = new THREE.MeshStandardMaterial({
         color: colorHex,
         roughness: 0.75,
-        metalness: 0.1
+        metalness: 0.1,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -1.0,
+        polygonOffsetUnits: -2.0
     });
-
-    const asphaltMesh = new THREE.Mesh(geom, mat);
+    const asphaltMesh = new THREE.Mesh(asphaltGeom, asphaltMat);
     asphaltMesh.receiveShadow = true;
     group.add(asphaltMesh);
 
-    // 2. High-Visibility Yellow Centerline Divider (Two-Way Street Separation)
-    // Offset slightly (+0.02) to prevent z-fighting with asphalt deck
-    const cWidth = 0.14;
-    const cSide = side.clone().normalize().multiplyScalar(cWidth / 2.0);
-    const cv1 = new THREE.Vector3().subVectors(p1, cSide); cv1.y += 0.02;
-    const cv2 = new THREE.Vector3().addVectors(p1, cSide); cv2.y += 0.02;
-    const cv3 = new THREE.Vector3().addVectors(p2, cSide); cv3.y += 0.02;
-    const cv4 = new THREE.Vector3().subVectors(p2, cSide); cv4.y += 0.02;
+    const centerGeom = new THREE.BufferGeometry();
+    centerGeom.setAttribute("position", new THREE.BufferAttribute(centerVerts, 3));
+    centerGeom.computeVertexNormals();
 
-    const cGeom = new THREE.BufferGeometry();
-    const cVertices = new Float32Array([
-        cv1.x, cv1.y, cv1.z,  cv2.x, cv2.y, cv2.z,  cv3.x, cv3.y, cv3.z,
-        cv1.x, cv1.y, cv1.z,  cv3.x, cv3.y, cv3.z,  cv4.x, cv4.y, cv4.z
-    ]);
-    cGeom.setAttribute("position", new THREE.BufferAttribute(cVertices, 3));
-    cGeom.computeVertexNormals();
-
-    const cMat = new THREE.MeshBasicMaterial({
+    const centerMat = new THREE.MeshBasicMaterial({
         color: 0xf59e0b, // Yellow center divider line
         transparent: true,
-        opacity: 0.85
+        opacity: 0.95,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -2.0,
+        polygonOffsetUnits: -4.0
     });
-    const centerLine = new THREE.Mesh(cGeom, cMat);
+    const centerLine = new THREE.Mesh(centerGeom, centerMat);
     group.add(centerLine);
 
     group.userData = { asphalt: asphaltMesh, centerLine: centerLine };
     return group;
 }
 
-function createRoadBarricadePair(p1, p2, width) {
+function createRoadBarricadePair(coord1, coord2, p1, p2, width, isBridge) {
     const group = new THREE.Group();
-    const len = p1.distanceTo(p2);
-    const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
+    const dx = p2.x - p1.x;
+    const dz = p2.z - p1.z;
+    const len = Math.hypot(dx, dz);
+    if (len < 0.001) return group;
+
+    const dir = new THREE.Vector3(dx, 0, dz).normalize();
+    const bridgeY = isBridge ? (Math.max(
+        getTerrainElevation(coord1[0], coord1[1]),
+        getTerrainElevation(coord2[0], coord2[1])
+    ) + 2.5) : 0;
 
     if (len < 12.0) {
         // Single barricade at midpoint for very short edges
-        const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+        const s = 0.5;
+        const wx = coord1[0] * (1.0 - s) + coord2[0] * s;
+        const wy = coord1[1] * (1.0 - s) + coord2[1] * s;
+        const px = p1.x * (1.0 - s) + p2.x * s;
+        const pz = p1.z * (1.0 - s) + p2.z * s;
+        const py = isBridge ? bridgeY : (getTerrainElevation(wx, wy) + 0.38);
+
         const b = createSingleBarricade(width, dir);
-        b.position.copy(mid);
+        b.position.set(px, py, pz);
         group.add(b);
     } else {
         // Dual barricades positioned at both entrances of the road segment
         const offset = Math.min(3.5, len * 0.12);
+        const s1 = offset / len;
+        const s2 = 1.0 - s1;
 
-        const pos1 = new THREE.Vector3().addVectors(p1, dir.clone().multiplyScalar(offset));
+        // Entrance 1
+        const wx1 = coord1[0] * (1.0 - s1) + coord2[0] * s1;
+        const wy1 = coord1[1] * (1.0 - s1) + coord2[1] * s1;
+        const px1 = p1.x * (1.0 - s1) + p2.x * s1;
+        const pz1 = p1.z * (1.0 - s1) + p2.z * s1;
+        const py1 = isBridge ? bridgeY : (getTerrainElevation(wx1, wy1) + 0.38);
+
         const b1 = createSingleBarricade(width, dir);
-        b1.position.copy(pos1);
+        b1.position.set(px1, py1, pz1);
         group.add(b1);
 
-        const pos2 = new THREE.Vector3().subVectors(p2, dir.clone().multiplyScalar(offset));
+        // Entrance 2
+        const wx2 = coord1[0] * (1.0 - s2) + coord2[0] * s2;
+        const wy2 = coord1[1] * (1.0 - s2) + coord2[1] * s2;
+        const px2 = p1.x * (1.0 - s2) + p2.x * s2;
+        const pz2 = p1.z * (1.0 - s2) + p2.z * s2;
+        const py2 = isBridge ? bridgeY : (getTerrainElevation(wx2, wy2) + 0.38);
+
         const b2 = createSingleBarricade(width, dir);
-        b2.position.copy(pos2);
+        b2.position.set(px2, py2, pz2);
         group.add(b2);
     }
 
@@ -1543,50 +1625,55 @@ function updateTraffic(dt) {
         const water = edge.waterDepth || 0.0;
         const isRoadClosed = edge.isClosed || (water >= 0.15);
 
-        // Hydrodynamic Passability Logic
+        // Hydrodynamic Passability & Hazard Reaction
         if (isRoadClosed) {
             if (!veh.isEmergency) {
-                // Passenger car stops before flood / barricade
-                veh.currentSpeed = 0.0;
-                veh.isStalled = true;
+                // Check if car is approaching the barricade boundary or flood zone
+                const atEndBarricade = (veh.direction === 1 && veh.t >= 0.80);
+                const atStartBarricade = (veh.direction === -1 && veh.t <= 0.20);
+                const inFlooding = (water >= 0.15);
 
-                // Evacuation check: attempt retreat onto dry connected road
-                veh.waitingTimer += dt;
-                if (veh.waitingTimer > 1.2) {
-                    const nearNode = (veh.t < 0.5) ? edge.u : edge.v;
-                    const dryOptions = Object.values(state.roadGraph).filter(e => 
-                        (e.u === nearNode || e.v === nearNode) && 
-                        e.id !== edge.id && 
-                        !e.isClosed && 
-                        (e.waterDepth || 0.0) < 0.05
-                    );
+                if (atEndBarricade || atStartBarricade || inFlooding) {
+                    // Decelerate smoothly to a stop
+                    veh.currentSpeed = Math.max(0.0, veh.currentSpeed - 14.0 * dt);
+                    veh.waitingTimer += dt;
 
-                    if (dryOptions.length > 0) {
-                        const nextEdge = dryOptions[Math.floor(Math.random() * dryOptions.length)];
-                        veh.edgeId = nextEdge.id;
-                        veh.t = (nextEdge.u === nearNode) ? 0.02 : 0.98;
-                        veh.direction = (nextEdge.u === nearNode) ? 1 : -1;
+                    // Execute smooth U-turn into opposing lane to retreat back towards dry intersection
+                    if (veh.currentSpeed <= 0.3 || veh.waitingTimer > 0.4) {
+                        veh.direction = -veh.direction;
+                        veh.currentSpeed = veh.baseSpeed * 0.55;
                         veh.isStalled = false;
-                        veh.currentSpeed = veh.baseSpeed * 0.7;
                         veh.waitingTimer = 0;
-                        return;
+                        if (veh.direction === 1) veh.t = Math.max(veh.t, 0.22);
+                        if (veh.direction === -1) veh.t = Math.min(veh.t, 0.78);
+                    } else {
+                        veh.isStalled = true;
                     }
+                } else {
+                    // Driving in reverse / retreat direction towards the open intersection
+                    veh.currentSpeed = Math.min(veh.baseSpeed * 0.70, veh.currentSpeed + 7.0 * dt);
+                    veh.isStalled = false;
+                    veh.waitingTimer = 0;
                 }
 
-                // Flash hazard lights while stopped
-                if (veh.mesh.userData.tailLights) {
-                    const blink = Math.floor(Date.now() / 350) % 2 === 0;
-                    veh.mesh.userData.tailLights.material.color.setHex(blink ? 0xf59e0b : 0xef4444);
-                }
-                return; // Do not advance into flood
-            } else {
-                // Emergency Ambulance
+                // If completely stranded in severe flood (>0.30m), stay stalled with flashing hazards
                 if (water >= 0.30) {
                     veh.currentSpeed = 0.0;
                     veh.isStalled = true;
-                    return;
+                }
+
+                // Flash hazard lights while stalled
+                if (veh.isStalled && veh.mesh.userData.tailLights) {
+                    const blink = Math.floor(Date.now() / 320) % 2 === 0;
+                    veh.mesh.userData.tailLights.material.color.setHex(blink ? 0xf59e0b : 0xef4444);
+                }
+            } else {
+                // Emergency Ambulance can navigate moderate flooding (<0.30m)
+                if (water >= 0.30) {
+                    veh.currentSpeed = 0.0;
+                    veh.isStalled = true;
                 } else {
-                    veh.currentSpeed = veh.baseSpeed * 0.35;
+                    veh.currentSpeed = veh.baseSpeed * 0.40;
                     veh.isStalled = false;
                 }
             }
@@ -1596,8 +1683,8 @@ function updateTraffic(dt) {
             veh.isStalled = false;
             veh.waitingTimer = 0;
         } else {
-            // Open Dry Road: Smoothly regain free flow speed if clear ahead
-            if (veh.currentSpeed < veh.baseSpeed * 0.9) {
+            // Open Dry Road: Smoothly regain free flow speed
+            if (veh.currentSpeed < veh.baseSpeed * 0.95) {
                 veh.currentSpeed = Math.min(veh.baseSpeed, veh.currentSpeed + 8.0 * dt);
             }
             veh.isStalled = false;
@@ -1625,6 +1712,9 @@ function updateTraffic(dt) {
                 veh.edgeId = nextEdge.id;
                 veh.t = (nextEdge.u === hitNode) ? 0.02 : 0.98;
                 veh.direction = (nextEdge.u === hitNode) ? 1 : -1;
+                veh.currentSpeed = veh.baseSpeed * 0.75;
+                veh.isStalled = false;
+                veh.waitingTimer = 0;
             } else {
                 // Dead end or surrounded by barricades: U-turn back onto open road
                 veh.direction *= -1;
@@ -1635,8 +1725,10 @@ function updateTraffic(dt) {
         // Clamp position along edge
         veh.t = npClamp(veh.t, 0.0, 1.0);
 
-        // 4. Compute 3D Position with Two-Way Lane Offset (Right-Hand Traffic)
-        const forward = new THREE.Vector3().subVectors(edge.end, edge.start).normalize();
+        // 4. Compute 3D Position with Two-Way Lane Offset & Exact Terrain Elevation
+        const dx = edge.end.x - edge.start.x;
+        const dz = edge.end.z - edge.start.z;
+        const forward = new THREE.Vector3(dx, 0, dz).normalize();
         const up = new THREE.Vector3(0, 1, 0);
         const right = new THREE.Vector3().crossVectors(forward, up).normalize();
 
@@ -1646,17 +1738,36 @@ function updateTraffic(dt) {
         const laneOffsetDist = (edge.width * 0.26) * veh.direction;
         const lateralShift = right.clone().multiplyScalar(laneOffsetDist);
 
-        const centerPos = new THREE.Vector3().lerpVectors(edge.start, edge.end, veh.t);
-        const finalPos = centerPos.add(lateralShift);
-        finalPos.y += 0.35; // Sit on road surface
+        const curWx = edge.startWorld.x * (1.0 - veh.t) + edge.endWorld.x * veh.t;
+        const curWy = edge.startWorld.y * (1.0 - veh.t) + edge.endWorld.y * veh.t;
 
+        const posX = (edge.start.x * (1.0 - veh.t) + edge.end.x * veh.t) + lateralShift.x;
+        const posZ = (edge.start.z * (1.0 - veh.t) + edge.end.z * veh.t) + lateralShift.z;
+
+        let roadElevY;
+        if (edge.isBridge) {
+            roadElevY = edge.start.y;
+        } else {
+            roadElevY = getTerrainElevation(curWx, curWy) + 0.38;
+        }
+
+        const finalPos = new THREE.Vector3(posX, roadElevY + 0.35, posZ);
         veh.mesh.position.copy(finalPos);
 
-        // Orient vehicle along lane direction
-        const lookTarget = veh.direction > 0
-            ? edge.end.clone().add(lateralShift)
-            : edge.start.clone().add(lateralShift);
-        veh.mesh.lookAt(lookTarget.x, finalPos.y, lookTarget.z);
+        // Orient vehicle along lane direction, matching terrain slope
+        const lookT = npClamp(veh.t + veh.direction * 0.04, 0.0, 1.0);
+        const lookWx = edge.startWorld.x * (1.0 - lookT) + edge.endWorld.x * lookT;
+        const lookWy = edge.startWorld.y * (1.0 - lookT) + edge.endWorld.y * lookT;
+        const lookElevY = edge.isBridge ? edge.start.y : (getTerrainElevation(lookWx, lookWy) + 0.38);
+
+        const lookPosX = (edge.start.x * (1.0 - lookT) + edge.end.x * lookT) + lateralShift.x;
+        const lookPosZ = (edge.start.z * (1.0 - lookT) + edge.end.z * lookT) + lateralShift.z;
+
+        const lookTarget = new THREE.Vector3(lookPosX, lookElevY + 0.35, lookPosZ);
+        if (lookTarget.distanceTo(finalPos) < 0.001) {
+            lookTarget.add(forward.clone().multiplyScalar(veh.direction * 0.5));
+        }
+        veh.mesh.lookAt(lookTarget);
 
         // Flashing emergency siren
         if (veh.isEmergency && veh.mesh.userData.siren) {
@@ -2591,9 +2702,23 @@ function worldTo3D(x, y) {
 
 function getTerrainElevation(x, y) {
     if (!state.terrain) return 0.0;
-    const col = Math.floor(npClamp(x / 50.0, 0, 119));
-    const row = Math.floor(npClamp((6000.0 - y) / 50.0, 0, 119));
-    const elev = state.terrain.elevation_grid[row][col];
+    const fx = npClamp(x / 50.0, 0, 118.999);
+    const fy = npClamp((6000.0 - y) / 50.0, 0, 118.999);
+
+    const c0 = Math.floor(fx);
+    const r0 = Math.floor(fy);
+    const c1 = Math.min(119, c0 + 1);
+    const r1 = Math.min(119, r0 + 1);
+
+    const tx = fx - c0;
+    const ty = fy - r0;
+
+    const e00 = state.terrain.elevation_grid[r0][c0];
+    const e10 = state.terrain.elevation_grid[r0][c1];
+    const e01 = state.terrain.elevation_grid[r1][c0];
+    const e11 = state.terrain.elevation_grid[r1][c1];
+
+    const elev = (e00 * (1.0 - tx) + e10 * tx) * (1.0 - ty) + (e01 * (1.0 - tx) + e11 * tx) * ty;
     return (elev - state.terrain.min_elevation_m) * 0.55;
 }
 
