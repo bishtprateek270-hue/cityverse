@@ -410,6 +410,9 @@ function buildRoadNetwork3D() {
 
         // Store edge in traffic routing graph
         const length = startVec.distanceTo(endVec);
+        // Realistic Two-Way Road Widths
+        const width = isHighway ? 4.6 : (p.road_class === "arterial" ? 3.4 : 2.6);
+
         state.roadGraph[p.edge_id] = {
             id: p.edge_id,
             start: startVec,
@@ -421,16 +424,22 @@ function buildRoadNetwork3D() {
             length: length,
             speedLimit: p.free_flow_speed_kmh || 40.0,
             roadClass: p.road_class,
+            width: width,
             isBridge: isBridge,
             isClosed: false,
             waterDepth: 0.0
         };
 
-        // 3D Road Ribbon Geometry
-        const width = isHighway ? 3.4 : (p.road_class === "arterial" ? 2.2 : 1.4);
-        const roadMesh = createRoadRibbon(startVec, endVec, width, isHighway ? 0x94a3b8 : 0x475569);
-        roadMesh.userData = { edgeId: p.edge_id, baseColor: isHighway ? 0x94a3b8 : 0x475569, width: width };
-        state.roadLinesGroup.add(roadMesh);
+        // 3D Road Ribbon with Dual-Lane Markings & Center Divider Line
+        const roadGroup = createRoadRibbon(startVec, endVec, width, isHighway ? 0x94a3b8 : 0x334155);
+        roadGroup.userData = { 
+            edgeId: p.edge_id, 
+            baseColor: isHighway ? 0x94a3b8 : 0x334155, 
+            width: width,
+            asphalt: roadGroup.userData.asphalt,
+            centerLine: roadGroup.userData.centerLine
+        };
+        state.roadLinesGroup.add(roadGroup);
 
         // If it's a bridge, add bridge support piers underneath
         if (isBridge) {
@@ -465,10 +474,12 @@ function createBridgeSupportPillars(p1, p2) {
 }
 
 function createRoadRibbon(p1, p2, width, colorHex) {
+    const group = new THREE.Group();
     const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
     const up = new THREE.Vector3(0, 1, 0);
     const side = new THREE.Vector3().crossVectors(dir, up).normalize().multiplyScalar(width / 2.0);
 
+    // 1. Asphalt Road Surface Quad
     const v1 = new THREE.Vector3().subVectors(p1, side);
     const v2 = new THREE.Vector3().addVectors(p1, side);
     const v3 = new THREE.Vector3().addVectors(p2, side);
@@ -484,11 +495,41 @@ function createRoadRibbon(p1, p2, width, colorHex) {
 
     const mat = new THREE.MeshStandardMaterial({
         color: colorHex,
-        roughness: 0.7,
+        roughness: 0.75,
         metalness: 0.1
     });
 
-    return new THREE.Mesh(geom, mat);
+    const asphaltMesh = new THREE.Mesh(geom, mat);
+    asphaltMesh.receiveShadow = true;
+    group.add(asphaltMesh);
+
+    // 2. High-Visibility Yellow Centerline Divider (Two-Way Street Separation)
+    // Offset slightly (+0.02) to prevent z-fighting with asphalt deck
+    const cWidth = 0.14;
+    const cSide = side.clone().normalize().multiplyScalar(cWidth / 2.0);
+    const cv1 = new THREE.Vector3().subVectors(p1, cSide); cv1.y += 0.02;
+    const cv2 = new THREE.Vector3().addVectors(p1, cSide); cv2.y += 0.02;
+    const cv3 = new THREE.Vector3().addVectors(p2, cSide); cv3.y += 0.02;
+    const cv4 = new THREE.Vector3().subVectors(p2, cSide); cv4.y += 0.02;
+
+    const cGeom = new THREE.BufferGeometry();
+    const cVertices = new Float32Array([
+        cv1.x, cv1.y, cv1.z,  cv2.x, cv2.y, cv2.z,  cv3.x, cv3.y, cv3.z,
+        cv1.x, cv1.y, cv1.z,  cv3.x, cv3.y, cv3.z,  cv4.x, cv4.y, cv4.z
+    ]);
+    cGeom.setAttribute("position", new THREE.BufferAttribute(cVertices, 3));
+    cGeom.computeVertexNormals();
+
+    const cMat = new THREE.MeshBasicMaterial({
+        color: 0xf59e0b, // Yellow center divider line
+        transparent: true,
+        opacity: 0.85
+    });
+    const centerLine = new THREE.Mesh(cGeom, cMat);
+    group.add(centerLine);
+
+    group.userData = { asphalt: asphaltMesh, centerLine: centerLine };
+    return group;
 }
 
 function createRoadBarricadePair(p1, p2, width) {
@@ -699,7 +740,7 @@ function buildRainWeatherFX() {
 // MOVING TRAFFIC SIMULATION (Cars Running, Braking, Diverting, Resuming)
 // =========================================================================
 
-function spawnTrafficFleet(count = 180) {
+function spawnTrafficFleet(count = 160) {
     state.trafficGroup = new THREE.Group();
     state.vehicles = [];
 
@@ -708,30 +749,57 @@ function spawnTrafficFleet(count = 180) {
     const candidateEdges = openDryEdges.length > 0 ? openDryEdges : Object.values(state.roadGraph);
     if (candidateEdges.length === 0) return;
 
-    const carColors = [0xf59e0b, 0xffffff, 0x38bdf8, 0xe2e8f0, 0x94a3b8, 0xef4444];
+    const carColors = [0xf59e0b, 0xffffff, 0x38bdf8, 0xe2e8f0, 0x94a3b8, 0xef4444, 0x10b981];
 
-    for (let i = 0; i < count; i++) {
+    // Spatial occupancy map to prevent initial spawn overlap
+    const laneOccupancy = new Map();
+
+    let spawned = 0;
+    let attempts = 0;
+    while (spawned < count && attempts < count * 8) {
+        attempts++;
         const edge = candidateEdges[Math.floor(Math.random() * candidateEdges.length)];
+        const dir = Math.random() > 0.5 ? 1 : -1;
+        const laneKey = `${edge.id}_${dir}`;
+
+        if (!laneOccupancy.has(laneKey)) {
+            laneOccupancy.set(laneKey, []);
+        }
+        const existingTs = laneOccupancy.get(laneKey);
+
+        // Pick a candidate position along edge with safe buffer spacing
+        const candidateT = 0.12 + Math.random() * 0.76;
+        const minGapT = 4.8 / Math.max(10.0, edge.length);
+        const hasOverlap = existingTs.some(t => Math.abs(t - candidateT) < minGapT);
+
+        // At most 2 cars per lane on standard segments to ensure free-flowing traffic
+        if (hasOverlap || existingTs.length >= 2) {
+            continue;
+        }
+
+        existingTs.push(candidateT);
 
         const isEmergency = (Math.random() < 0.08); // 8% Ambulances / Fire
         const color = isEmergency ? 0xef4444 : carColors[Math.floor(Math.random() * carColors.length)];
 
-        // 3D Car Body Mesh
+        // 3D Car Body Mesh (compact scale to fit lanes cleanly)
         const carMesh = createCarMesh(color, isEmergency);
         state.trafficGroup.add(carMesh);
 
         state.vehicles.push({
-            id: i,
+            id: spawned,
             mesh: carMesh,
             edgeId: edge.id,
-            t: Math.random(), // Position along edge (0.0 to 1.0)
-            baseSpeed: (14.0 + Math.random() * 12.0) * (isEmergency ? 1.5 : 1.0),
-            currentSpeed: 16.0,
-            direction: Math.random() > 0.5 ? 1 : -1,
+            t: candidateT,
+            baseSpeed: (13.0 + Math.random() * 8.0) * (isEmergency ? 1.4 : 1.0),
+            currentSpeed: 13.0,
+            direction: dir,
             isEmergency: isEmergency,
             isStalled: false,
             waitingTimer: 0
         });
+
+        spawned++;
     }
 
     state.scene.add(state.trafficGroup);
@@ -740,47 +808,47 @@ function spawnTrafficFleet(count = 180) {
 function createCarMesh(colorHex, isEmergency) {
     const group = new THREE.Group();
 
-    // Body
-    const bodyGeom = new THREE.BoxGeometry(1.6, 0.7, 3.2);
+    // Body (width: 1.25, height: 0.55, length: 2.6 - fits neatly into designated lane)
+    const bodyGeom = new THREE.BoxGeometry(1.25, 0.55, 2.6);
     const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.4, metalness: 0.3 });
     const body = new THREE.Mesh(bodyGeom, bodyMat);
-    body.position.y = 0.5;
+    body.position.y = 0.45;
     body.castShadow = true;
     group.add(body);
 
     // Windshield Cabin
-    const cabinGeom = new THREE.BoxGeometry(1.3, 0.55, 1.6);
+    const cabinGeom = new THREE.BoxGeometry(1.05, 0.45, 1.35);
     const cabinMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 });
     const cabin = new THREE.Mesh(cabinGeom, cabinMat);
-    cabin.position.set(0, 0.95, -0.2);
+    cabin.position.set(0, 0.82, -0.15);
     group.add(cabin);
 
     // Headlights
-    const lightGeom = new THREE.BoxGeometry(0.3, 0.15, 0.1);
+    const lightGeom = new THREE.BoxGeometry(0.24, 0.12, 0.08);
     const lightMat = new THREE.MeshBasicMaterial({ color: 0xffedd5 });
     const hl1 = new THREE.Mesh(lightGeom, lightMat);
-    hl1.position.set(-0.5, 0.5, 1.6);
+    hl1.position.set(-0.42, 0.45, 1.3);
     const hl2 = hl1.clone();
-    hl2.position.set(0.5, 0.5, 1.6);
+    hl2.position.set(0.42, 0.45, 1.3);
     group.add(hl1);
     group.add(hl2);
 
     // Brake / Tail lights
     const brakeMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
     const bl1 = new THREE.Mesh(lightGeom, brakeMat);
-    bl1.position.set(-0.5, 0.5, -1.6);
+    bl1.position.set(-0.42, 0.45, -1.3);
     const bl2 = bl1.clone();
-    bl2.position.set(0.5, 0.5, -1.6);
+    bl2.position.set(0.42, 0.45, -1.3);
     group.add(bl1);
     group.add(bl2);
     group.userData.tailLights = bl1;
 
     // Emergency Siren
     if (isEmergency) {
-        const sirenGeom = new THREE.CylinderGeometry(0.2, 0.2, 0.3, 8);
+        const sirenGeom = new THREE.CylinderGeometry(0.18, 0.18, 0.25, 8);
         const sirenMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
         const siren = new THREE.Mesh(sirenGeom, sirenMat);
-        siren.position.set(0, 1.35, -0.2);
+        siren.position.set(0, 1.15, -0.15);
         group.add(siren);
         group.userData.siren = siren;
     }
@@ -791,6 +859,62 @@ function createCarMesh(colorHex, isEmergency) {
 function updateTraffic(dt) {
     if (!state.trafficGroup || state.vehicles.length === 0) return;
 
+    // 1. Group vehicles by lane (edgeId + direction) for car-following & anti-overlap physics
+    const laneGroups = new Map();
+    state.vehicles.forEach(veh => {
+        const key = `${veh.edgeId}_${veh.direction}`;
+        if (!laneGroups.has(key)) laneGroups.set(key, []);
+        laneGroups.get(key).push(veh);
+    });
+
+    // 2. Intra-Lane Car-Following Model (Intelligent Driver Model / Anti-Tailgating)
+    laneGroups.forEach((cars, key) => {
+        if (cars.length <= 1) return;
+        const dir = cars[0].direction;
+        const edge = state.roadGraph[cars[0].edgeId];
+        if (!edge) return;
+
+        // Sort cars along travel direction:
+        // When dir === 1: larger t is ahead (0 -> 1)
+        // When dir === -1: smaller t is ahead (1 -> 0)
+        if (dir === 1) {
+            cars.sort((a, b) => a.t - b.t);
+        } else {
+            cars.sort((a, b) => b.t - a.t);
+        }
+
+        // Apply car-following headway constraint from rear to front
+        for (let i = 0; i < cars.length - 1; i++) {
+            const follower = cars[i];
+            const leader = cars[i + 1];
+
+            const headwayDist = (dir === 1)
+                ? (leader.t - follower.t) * edge.length
+                : (follower.t - leader.t) * edge.length;
+
+            const safeGap = 5.0;       // Buffer to start matching speed (meters in 3D)
+            const stopGap = 3.4;       // Bumper-to-bumper stopping distance (strictly no overlap)
+
+            if (headwayDist < safeGap) {
+                // Decelerate trailing vehicle to match leader
+                const speedFactor = Math.max(0.0, (headwayDist - stopGap) / (safeGap - stopGap));
+                follower.currentSpeed = Math.min(follower.currentSpeed, leader.currentSpeed * speedFactor);
+
+                // Hard anti-overlap distance enforcement
+                if (headwayDist < stopGap) {
+                    follower.currentSpeed = 0.0;
+                    const minGapT = stopGap / Math.max(10.0, edge.length);
+                    if (dir === 1) {
+                        follower.t = Math.min(follower.t, leader.t - minGapT);
+                    } else {
+                        follower.t = Math.max(follower.t, leader.t + minGapT);
+                    }
+                }
+            }
+        }
+    });
+
+    // 3. Update Individual Vehicle Kinematics, Flooding Reactions, and 3D Transformations
     state.vehicles.forEach(veh => {
         let edge = state.roadGraph[veh.edgeId];
         if (!edge) return;
@@ -798,15 +922,14 @@ function updateTraffic(dt) {
         const water = edge.waterDepth || 0.0;
         const isRoadClosed = edge.isClosed || (water >= 0.15);
 
-        // 1. Strict Passability & Obstacle Logic
+        // Hydrodynamic Passability Logic
         if (isRoadClosed) {
-            // Road is submerged / barricaded
             if (!veh.isEmergency) {
-                // Normal Passenger Car: Strictly cannot drive in floodwater!
+                // Passenger car stops before flood / barricade
                 veh.currentSpeed = 0.0;
                 veh.isStalled = true;
 
-                // Attempt evacuation: If vehicle was near an intersection, try to retreat onto dry road
+                // Evacuation check: attempt retreat onto dry connected road
                 veh.waitingTimer += dt;
                 if (veh.waitingTimer > 1.2) {
                     const nearNode = (veh.t < 0.5) ? edge.u : edge.v;
@@ -825,49 +948,50 @@ function updateTraffic(dt) {
                         veh.isStalled = false;
                         veh.currentSpeed = veh.baseSpeed * 0.7;
                         veh.waitingTimer = 0;
-                        return; // Rerouted onto dry road
+                        return;
                     }
                 }
 
-                // Car is stopped stationary at the barricade: flash hazard blinkers
+                // Flash hazard lights while stopped
                 if (veh.mesh.userData.tailLights) {
                     const blink = Math.floor(Date.now() / 350) % 2 === 0;
                     veh.mesh.userData.tailLights.material.color.setHex(blink ? 0xf59e0b : 0xef4444);
                 }
-                return; // Absolutely DO NOT advance position into floodwater!
+                return; // Do not advance into flood
             } else {
                 // Emergency Ambulance
                 if (water >= 0.30) {
                     veh.currentSpeed = 0.0;
                     veh.isStalled = true;
-                    return; // Even ambulances halt at extreme flood depth
+                    return;
                 } else {
-                    // High-clearance slow emergency crawl through moderate water
                     veh.currentSpeed = veh.baseSpeed * 0.35;
                     veh.isStalled = false;
                 }
             }
         } else if (water >= 0.05) {
-            // Shallow Ponding: Speed degraded (Pregnolato empirical urban curve)
-            veh.currentSpeed = veh.baseSpeed * 0.50;
+            // Shallow Ponding: Speed degraded (Pregnolato curve)
+            veh.currentSpeed = Math.min(veh.currentSpeed, veh.baseSpeed * 0.50);
             veh.isStalled = false;
             veh.waitingTimer = 0;
         } else {
-            // Dry Open Road: Free flow
-            veh.currentSpeed = veh.baseSpeed;
+            // Open Dry Road: Smoothly regain free flow speed if clear ahead
+            if (veh.currentSpeed < veh.baseSpeed * 0.9) {
+                veh.currentSpeed = Math.min(veh.baseSpeed, veh.currentSpeed + 8.0 * dt);
+            }
             veh.isStalled = false;
             veh.waitingTimer = 0;
         }
 
-        // Advance position along road
+        // Kinematic Position Step
         const stepDist = (veh.currentSpeed * dt) / Math.max(12.0, edge.length);
         veh.t += stepDist * veh.direction;
 
-        // Approaching road intersection (end of edge)
+        // Approaching road intersection (edge endpoint)
         if (veh.t >= 1.0 || veh.t <= 0.0) {
             const hitNode = (veh.t >= 1.0) ? edge.v : edge.u;
 
-            // Strict routing: Cars only choose connected roads that are DRY and NOT CLOSED
+            // Find connected edges that are open and dry
             const availableConnections = Object.values(state.roadGraph).filter(e => 
                 (e.u === hitNode || e.v === hitNode) && 
                 e.id !== edge.id && 
@@ -876,30 +1000,42 @@ function updateTraffic(dt) {
             );
 
             if (availableConnections.length > 0) {
-                // Turn onto an open dry road
                 const nextEdge = availableConnections[Math.floor(Math.random() * availableConnections.length)];
                 veh.edgeId = nextEdge.id;
                 veh.t = (nextEdge.u === hitNode) ? 0.02 : 0.98;
                 veh.direction = (nextEdge.u === hitNode) ? 1 : -1;
             } else {
-                // Dead end or all outbound roads are flooded/barricaded!
-                // Stop before the roadblock, perform U-turn, and head back on open road
+                // Dead end or surrounded by barricades: U-turn back onto open road
                 veh.direction *= -1;
                 veh.t = npClamp(veh.t, 0.03, 0.97);
             }
         }
 
-        // Clamp position within edge bounds
+        // Clamp position along edge
         veh.t = npClamp(veh.t, 0.0, 1.0);
 
-        // Interpolate 3D position
-        const pos = new THREE.Vector3().lerpVectors(edge.start, edge.end, veh.t);
-        pos.y += 0.35; // Place on road surface
-        veh.mesh.position.copy(pos);
+        // 4. Compute 3D Position with Two-Way Lane Offset (Right-Hand Traffic)
+        const forward = new THREE.Vector3().subVectors(edge.end, edge.start).normalize();
+        const up = new THREE.Vector3(0, 1, 0);
+        const right = new THREE.Vector3().crossVectors(forward, up).normalize();
 
-        // Orient vehicle along road direction
-        const lookTarget = veh.direction > 0 ? edge.end : edge.start;
-        veh.mesh.lookAt(lookTarget.x, pos.y, lookTarget.z);
+        // Driving on the right-hand side of the road:
+        // direction = 1 -> offset along +right (Right Lane)
+        // direction = -1 -> offset along -right (Opposing Lane's Right)
+        const laneOffsetDist = (edge.width * 0.26) * veh.direction;
+        const lateralShift = right.clone().multiplyScalar(laneOffsetDist);
+
+        const centerPos = new THREE.Vector3().lerpVectors(edge.start, edge.end, veh.t);
+        const finalPos = centerPos.add(lateralShift);
+        finalPos.y += 0.35; // Sit on road surface
+
+        veh.mesh.position.copy(finalPos);
+
+        // Orient vehicle along lane direction
+        const lookTarget = veh.direction > 0
+            ? edge.end.clone().add(lateralShift)
+            : edge.start.clone().add(lateralShift);
+        veh.mesh.lookAt(lookTarget.x, finalPos.y, lookTarget.z);
 
         // Flashing emergency siren
         if (veh.isEmergency && veh.mesh.userData.siren) {
@@ -1103,30 +1239,31 @@ function update3DRoadConditions(depthGrid) {
 
         // Find associated barrier mesh group
         const barrier = state.barriersGroup.children.find(b => b.userData.edgeId === edgeId);
+        const asphalt = mesh.userData.asphalt || mesh;
 
         if (edge.waterDepth >= 0.30) {
             // Severe Flooding / Emergency Cutoff: Hazard Red ribbon + Active Barricades
-            mesh.material.color.setHex(0xef4444);
-            mesh.material.emissive.setHex(0xb91c1c);
-            mesh.material.emissiveIntensity = 0.8;
+            asphalt.material.color.setHex(0xef4444);
+            asphalt.material.emissive.setHex(0xb91c1c);
+            asphalt.material.emissiveIntensity = 0.8;
             if (barrier) barrier.visible = true;
         } else if (edge.waterDepth >= 0.15) {
             // Passenger Stall / Closed Road: Glowing Hazard Orange-Red + Active Barricades
-            mesh.material.color.setHex(0xf97316);
-            mesh.material.emissive.setHex(0xc2410c);
-            mesh.material.emissiveIntensity = 0.6;
+            asphalt.material.color.setHex(0xf97316);
+            asphalt.material.emissive.setHex(0xc2410c);
+            asphalt.material.emissiveIntensity = 0.6;
             if (barrier) barrier.visible = true;
         } else if (edge.waterDepth >= 0.05) {
             // Shallow Ponding: Speed Degraded (Amber)
-            mesh.material.color.setHex(0xeab308);
-            mesh.material.emissive.setHex(0x78350f);
-            mesh.material.emissiveIntensity = 0.2;
+            asphalt.material.color.setHex(0xeab308);
+            asphalt.material.emissive.setHex(0x78350f);
+            asphalt.material.emissiveIntensity = 0.2;
             if (barrier) barrier.visible = false;
         } else {
             // Open Road: Asphalt Dark Slate
-            mesh.material.color.setHex(mesh.userData.baseColor);
-            mesh.material.emissive.setHex(0x000000);
-            mesh.material.emissiveIntensity = 0.0;
+            asphalt.material.color.setHex(mesh.userData.baseColor);
+            asphalt.material.emissive.setHex(0x000000);
+            asphalt.material.emissiveIntensity = 0.0;
             if (barrier) barrier.visible = false;
         }
     });
