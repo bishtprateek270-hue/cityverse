@@ -232,78 +232,78 @@ function interpolateHexColor(hex1, hex2, t) {
 const ARCH_PALETTES = {
     azure_glass: {
         name: "Azure Glass Curtain Wall",
-        baseBg: "#0284c7",
-        spandrel: "#cbd5e1",
-        spandrelShadow: "#475569",
-        mullion: "#e2e8f0",
-        mullionShadow: "#334155",
-        winDark: "#0369a1",
-        winReflect: "#38bdf8",
-        lights: ["#fef08a", "#bae6fd", "#e0f2fe", "#fde047"],
-        roughness: 0.16,
-        metalness: 0.82,
-        crownColor: 0x38bdf8,
-        baseEmissive: 0.28
+        baseBg: "#0f172a",
+        spandrel: "#334155",
+        spandrelShadow: "#1e293b",
+        mullion: "#475569",
+        mullionShadow: "#0f172a",
+        winDark: "#090d16",
+        winReflect: "#1e293b",
+        lights: ["#fef3c7", "#fde68a", "#e2e8f0"],
+        roughness: 0.35,
+        metalness: 0.65,
+        crownColor: 0x334155,
+        baseEmissive: 0.06
     },
     bronze_glass: {
         name: "Warm Bronze & Champagne High-Rise",
-        baseBg: "#78350f",
-        spandrel: "#d97706",
-        spandrelShadow: "#451a03",
-        mullion: "#b45309",
-        mullionShadow: "#291002",
-        winDark: "#451a03",
-        winReflect: "#f59e0b",
-        lights: ["#fef3c7", "#fde68a", "#fed7aa", "#f59e0b"],
-        roughness: 0.20,
-        metalness: 0.78,
-        crownColor: 0xf59e0b,
-        baseEmissive: 0.26
+        baseBg: "#1c1917",
+        spandrel: "#44403c",
+        spandrelShadow: "#1c1917",
+        mullion: "#57534e",
+        mullionShadow: "#0c0a09",
+        winDark: "#0c0a09",
+        winReflect: "#292524",
+        lights: ["#fef3c7", "#fed7aa", "#e2e8f0"],
+        roughness: 0.38,
+        metalness: 0.60,
+        crownColor: 0x44403c,
+        baseEmissive: 0.05
     },
     silver_tower: {
         name: "Silver & Platinum Modern Tower",
-        baseBg: "#f1f5f9",
-        spandrel: "#e2e8f0",
-        spandrelShadow: "#1e293b",
-        mullion: "#cbd5e1",
-        mullionShadow: "#0f172a",
-        winDark: "#1e3a5f",
-        winReflect: "#60a5fa",
-        lights: ["#fef9c3", "#93c5fd", "#ffffff", "#bae6fd"],
-        roughness: 0.35,
-        metalness: 0.38,
-        crownColor: 0xffffff,
-        baseEmissive: 0.25
+        baseBg: "#1e293b",
+        spandrel: "#334155",
+        spandrelShadow: "#0f172a",
+        mullion: "#475569",
+        mullionShadow: "#020617",
+        winDark: "#090d16",
+        winReflect: "#1e293b",
+        lights: ["#fef9c3", "#e2e8f0", "#ffffff"],
+        roughness: 0.40,
+        metalness: 0.55,
+        crownColor: 0x334155,
+        baseEmissive: 0.05
     },
     emerald_glass: {
         name: "Emerald Low-E Eco-Tower",
-        baseBg: "#0f766e",
-        spandrel: "#0d9488",
+        baseBg: "#06221f",
+        spandrel: "#134e4a",
         spandrelShadow: "#042f2e",
-        mullion: "#14b8a6",
+        mullion: "#0f766e",
         mullionShadow: "#021a19",
-        winDark: "#042f2e",
-        winReflect: "#5eead4",
-        lights: ["#fef08a", "#a7f3d0", "#fde047", "#6ee7b7"],
-        roughness: 0.18,
-        metalness: 0.75,
-        crownColor: 0x10b981,
-        baseEmissive: 0.25
+        winDark: "#021a19",
+        winReflect: "#042f2e",
+        lights: ["#fef3c7", "#d1fae5", "#e2e8f0"],
+        roughness: 0.36,
+        metalness: 0.60,
+        crownColor: 0x134e4a,
+        baseEmissive: 0.05
     },
     cobalt_tower: {
         name: "Cobalt Prestige Navy Tower",
-        baseBg: "#1e3a8a",
-        spandrel: "#2563eb",
+        baseBg: "#0f172a",
+        spandrel: "#1e3a8a",
         spandrelShadow: "#0c1b33",
-        mullion: "#f8fafc",
-        mullionShadow: "#172554",
-        winDark: "#0c1b33",
-        winReflect: "#60a5fa",
-        lights: ["#dbeafe", "#bfdbfe", "#fef08a", "#93c5fd"],
-        roughness: 0.15,
-        metalness: 0.85,
-        crownColor: 0x60a5fa,
-        baseEmissive: 0.27
+        mullion: "#3b82f6",
+        mullionShadow: "#0f172a",
+        winDark: "#090d16",
+        winReflect: "#1e293b",
+        lights: ["#fef3c7", "#bfdbfe", "#e2e8f0"],
+        roughness: 0.35,
+        metalness: 0.65,
+        crownColor: 0x1e3a8a,
+        baseEmissive: 0.06
     }
 };
 
@@ -864,7 +864,7 @@ function createRainDropTexture() {
     return new THREE.CanvasTexture(canvas);
 }
 
-function applyBoxFaceUVs(geom, width, height, depth, tileW = 5.0, tileH = 3.6) {
+function applyBoxFaceUVs(geom, width, height, depth, tileW = 1.6, tileH = 1.4) {
     const uvAttr = geom.attributes.uv;
     if (!uvAttr) return;
 
@@ -1561,21 +1561,6 @@ function createSingleBarricade(roadWidth, dir) {
     postRight.position.set(barWidth * 0.42, 0.8, 0);
     bGroup.add(postRight);
 
-    // Dual flashing emergency strobe beacon lights on top of each barricade
-    const beaconGeom = new THREE.SphereGeometry(0.18, 8, 8);
-    const beaconMat1 = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-    const beaconMat2 = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
-    
-    const beacon1 = new THREE.Mesh(beaconGeom, beaconMat1);
-    beacon1.position.set(-barWidth * 0.38, 1.7, 0);
-    bGroup.add(beacon1);
-
-    const beacon2 = new THREE.Mesh(beaconGeom, beaconMat2);
-    beacon2.position.set(barWidth * 0.38, 1.7, 0);
-    bGroup.add(beacon2);
-
-    bGroup.userData.beacons = [beacon1, beacon2];
-
     // Align barricade perpendicular to road travel direction
     bGroup.rotation.y = Math.atan2(dir.x, dir.z);
 
@@ -1841,19 +1826,6 @@ function buildBuildings3D() {
             parapet.position.y = roofTopY + parapetH / 2.0;
             bldgGroup.add(parapet);
 
-            // Architectural Crown Accent Trim (Glows with the building's theme color)
-            const crownTrimGeom = new THREE.BoxGeometry(w3 * 0.96, 0.15, d3 * 0.96);
-            const crownTrimMat = new THREE.MeshStandardMaterial({
-                color: selectedTheme.crownColor,
-                emissive: selectedTheme.crownColor,
-                emissiveIntensity: 0.55,
-                roughness: 0.25
-            });
-            crownTrimMat.userData = { baseEmissive: 0.55 };
-            const crownTrim = new THREE.Mesh(crownTrimGeom, crownTrimMat);
-            crownTrim.position.y = roofTopY + parapetH + 0.08;
-            bldgGroup.add(crownTrim);
-
             // Central Elevator & Mechanical Penthouse Core Tower ("cors")
             const coreW = Math.max(3.5, w3 * 0.44);
             const coreD = Math.max(3.5, d3 * 0.44);
@@ -1916,19 +1888,6 @@ function buildBuildings3D() {
                 const lip = new THREE.Mesh(lipGeom, lipMat);
                 lip.position.set(0, roofTopY + 0.06, 0);
                 bldgGroup.add(lip);
-
-                // 12 Perimeter LED Runway Beacons around helipad
-                const beaconGeom = new THREE.SphereGeometry(0.18, 8, 8);
-                for (let b = 0; b < 12; b++) {
-                    const angle = (b / 12) * Math.PI * 2;
-                    const bx = Math.cos(angle) * (padRadius * 0.94);
-                    const bz = Math.sin(angle) * (padRadius * 0.94);
-                    const bMat = new THREE.MeshBasicMaterial({ color: (b % 2 === 0) ? 0x10b981 : 0xf8fafc });
-                    const beacon = new THREE.Mesh(beaconGeom, bMat);
-                    beacon.position.set(bx, roofTopY + 0.32, bz);
-                    bldgGroup.add(beacon);
-                    state.helipadBeacons.push(beacon);
-                }
             }
 
             // Communications Spire & FAA Warning Beacon on tall towers (height >= 80m)
@@ -1940,11 +1899,11 @@ function buildBuildings3D() {
                 spire.position.set(coreOffX, roofTopY + coreH + capH + spireH / 2.0, coreOffZ);
                 bldgGroup.add(spire);
 
-                // FAA Obstruction Red Warning Beacon Light
-                const beaconGeom = new THREE.SphereGeometry(0.40, 8, 8);
-                const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                // FAA Obstruction Red Warning Beacon Light (subtle pinpoint)
+                const beaconGeom = new THREE.SphereGeometry(0.14, 8, 8);
+                const beaconMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
                 const beacon = new THREE.Mesh(beaconGeom, beaconMat);
-                beacon.position.set(coreOffX, roofTopY + coreH + capH + spireH + 0.2, coreOffZ);
+                beacon.position.set(coreOffX, roofTopY + coreH + capH + spireH + 0.1, coreOffZ);
                 bldgGroup.add(beacon);
                 state.aviationBeacons.push(beacon);
             }
@@ -2081,14 +2040,7 @@ function buildFacilities3D() {
         else if (p.category === "pumping_stations") color = 0x10b981;
         else if (p.category === "ems_stations") color = 0xf59e0b;
 
-        // Floating holographic marker badge above
-        const badgeGeom = new THREE.SphereGeometry(1.6, 12, 12);
-        const badgeMat = new THREE.MeshBasicMaterial({ color: color });
-        const badge = new THREE.Mesh(badgeGeom, badgeMat);
-        badge.position.set(0, 24.0, 0);
-        facGroup.add(badge);
-
-        facGroup.userData = { id: p.name, category: p.category, badge: badge };
+        facGroup.userData = { id: p.name, category: p.category };
 
         if (p.category === "hospitals") {
             // Main Hospital Pavilion Building
@@ -2146,19 +2098,6 @@ function buildFacilities3D() {
             padDeck.position.set(0, padElev + 0.18, 0);
             facGroup.add(padDeck);
 
-            // 12 Perimeter LED Green/White Runway Beacons
-            const bGeom = new THREE.SphereGeometry(0.22, 8, 8);
-            for (let b = 0; b < 12; b++) {
-                const angle = (b / 12) * Math.PI * 2;
-                const bx = Math.cos(angle) * 6.8;
-                const bz = Math.sin(angle) * 6.8;
-                const bMat = new THREE.MeshBasicMaterial({ color: (b % 2 === 0) ? 0x10b981 : 0xf8fafc });
-                const beacon = new THREE.Mesh(bGeom, bMat);
-                beacon.position.set(bx, padElev + 0.40, bz);
-                facGroup.add(beacon);
-                state.helipadBeacons.push(beacon);
-            }
-
             // High Mast Emergency Strobe Beacon atop Hospital Roof
             const mastGeom = new THREE.CylinderGeometry(0.12, 0.22, 6.0, 8);
             const mastMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 });
@@ -2166,8 +2105,8 @@ function buildFacilities3D() {
             mast.position.set(-bldgW * 0.35, bldgH + 3.0, -bldgD * 0.3);
             facGroup.add(mast);
 
-            const mastBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-            mastBeacon.position.set(-bldgW * 0.35, bldgH + 6.2, -bldgD * 0.3);
+            const mastBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+            mastBeacon.position.set(-bldgW * 0.35, bldgH + 6.1, -bldgD * 0.3);
             facGroup.add(mastBeacon);
             state.aviationBeacons.push(mastBeacon);
 
@@ -2199,18 +2138,6 @@ function buildFacilities3D() {
                 turb.position.set(ox, pHouseH + 0.9, 0);
                 facGroup.add(turb);
             });
-
-            // High-Visibility Amber Rotating Warning Strobe Beacon atop Roof
-            const strobeStand = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 2.0, 8), turbMat);
-            strobeStand.position.set(0, pHouseH + 1.0, 0);
-            facGroup.add(strobeStand);
-
-            const strobeLight = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.40, 0.40, 0.55, 12),
-                new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xf59e0b, emissiveIntensity: 0.85 })
-            );
-            strobeLight.position.set(0, pHouseH + 2.2, 0);
-            facGroup.add(strobeLight);
             state.pumpingBeacons.push(strobeLight);
 
         } else if (p.category === "electrical_substations") {
@@ -3739,7 +3666,7 @@ function applyAtmosphereUpdate(dt) {
         hemiGnd = new THREE.Color(0x020617);
         hemiInt = 0.25;
         rainOpac = (parseFloat(sliderRain.value) > 5) ? 0.55 : 0.0;
-        emissiveScale = 1.9;
+        emissiveScale = 0.35;
 
         if (state.sunMesh) state.sunMesh.visible = false;
     } else {
@@ -3769,7 +3696,7 @@ function applyAtmosphereUpdate(dt) {
         hemiInt = THREE.MathUtils.lerp(0.85, 0.55, clampedWf);
 
         rainOpac = (clampedWf < 0.04) ? 0.0 : THREE.MathUtils.lerp(0.12, 0.50, (clampedWf - 0.04) / 0.96);
-        emissiveScale = THREE.MathUtils.lerp(0.20, 1.5, clampedWf);
+        emissiveScale = THREE.MathUtils.lerp(0.05, 0.25, clampedWf);
 
         if (state.sunMesh) {
             state.sunMesh.visible = (clampedWf < 0.75);
@@ -3923,27 +3850,7 @@ function animate() {
         }
     }
 
-    // 4b. Pulse Rooftop Helipad Perimeter Runway Beacons
-    if (state.helipadBeacons && state.helipadBeacons.length > 0) {
-        const isPadFlash = (elapsedTime % 1.2) < 0.6;
-        for (let i = 0; i < state.helipadBeacons.length; i++) {
-            const isEven = (i % 2 === 0);
-            if (isPadFlash) {
-                state.helipadBeacons[i].material.color.setHex(isEven ? 0x10b981 : 0xf8fafc);
-            } else {
-                state.helipadBeacons[i].material.color.setHex(isEven ? 0x064e3b : 0x475569);
-            }
-        }
-    }
-
-    // 4c. Spin Pumping Station Strobe Warning Beacons
-    if (state.pumpingBeacons && state.pumpingBeacons.length > 0) {
-        for (let i = 0; i < state.pumpingBeacons.length; i++) {
-            state.pumpingBeacons[i].rotation.y += dt * 5.0;
-        }
-    }
-
-    // 5. Drone Orbit Mode
+    // 4. Drone Orbit Mode
     if (state.isDroneOrbit) {
         state.orbitAngle += dt * 0.15;
         const radius = 340;
@@ -3953,25 +3860,10 @@ function animate() {
         state.controls.target.set(0, 15, 0);
     }
 
-    // 6. Random Storm Lightning Flashes (only in severe storms)
+    // 5. Random Storm Lightning Flashes (only in severe storms)
     if (state.currentWeatherFactor > 0.65 && Math.random() < 0.009) {
         state.flashLight.intensity = 4.5;
         setTimeout(() => { if (state.flashLight) state.flashLight.intensity = 0.0; }, 75);
-    }
-
-    // 7. Flash Warning Strobe Beacons on Road Barricades
-    if (state.barriersGroup && state.barriersGroup.visible) {
-        const flashTick = Math.floor(Date.now() / 250) % 2 === 0;
-        state.barriersGroup.children.forEach(pair => {
-            if (pair.visible) {
-                pair.children.forEach(single => {
-                    if (single.userData && single.userData.beacons) {
-                        single.userData.beacons[0].material.color.setHex(flashTick ? 0xef4444 : 0x450a0a);
-                        single.userData.beacons[1].material.color.setHex(!flashTick ? 0xf59e0b : 0x451a03);
-                    }
-                });
-            }
-        });
     }
 
     state.controls.update();
@@ -4109,6 +4001,74 @@ function setupEventListeners() {
     setupLayerToggle("chkFurniture", () => state.streetFurnitureGroup);
     setupLayerToggle("chkFacilities", () => state.facilitiesGroup);
     setupLayerToggle("chkRain", () => state.rainSystem);
+
+    // Layers Popover Toggle
+    const btnLayersDropdown = document.getElementById("btnLayersDropdown");
+    const layersMenu = document.getElementById("layersMenu");
+    if (btnLayersDropdown && layersMenu) {
+        btnLayersDropdown.addEventListener("click", (e) => {
+            e.stopPropagation();
+            layersMenu.classList.toggle("hidden");
+        });
+        document.addEventListener("click", (e) => {
+            if (!layersMenu.contains(e.target) && e.target !== btnLayersDropdown) {
+                layersMenu.classList.add("hidden");
+            }
+        });
+    }
+
+    // Hydrologic Atlas Collapsible Card Toggle
+    const legendCard = document.getElementById("legendCard");
+    const legendHeaderToggle = document.getElementById("legendHeaderToggle");
+    if (legendCard && legendHeaderToggle) {
+        legendHeaderToggle.addEventListener("click", () => {
+            legendCard.classList.toggle("collapsed");
+        });
+    }
+
+    // Sidebar Panels Collapse/Expand Toggles
+    const leftPanel = document.getElementById("leftPanel");
+    const rightPanel = document.getElementById("rightPanel");
+    const btnToggleLeft = document.getElementById("btnToggleLeft");
+    const btnToggleRight = document.getElementById("btnToggleRight");
+    const btnNavToggleLeft = document.getElementById("btnNavToggleLeft");
+    const btnNavToggleRight = document.getElementById("btnNavToggleRight");
+
+    function toggleLeftPanel() {
+        if (!leftPanel) return;
+        const isCollapsed = leftPanel.classList.toggle("collapsed");
+        if (btnToggleLeft) {
+            const arr = btnToggleLeft.querySelector(".tab-arrow");
+            if (arr) arr.innerText = isCollapsed ? "▶" : "◀";
+        }
+        if (btnNavToggleLeft) {
+            btnNavToggleLeft.classList.toggle("active", !isCollapsed);
+        }
+    }
+
+    function toggleRightPanel() {
+        if (!rightPanel) return;
+        const isCollapsed = rightPanel.classList.toggle("collapsed");
+        if (btnToggleRight) {
+            const arr = btnToggleRight.querySelector(".tab-arrow");
+            if (arr) arr.innerText = isCollapsed ? "◀" : "▶";
+        }
+        if (btnNavToggleRight) {
+            btnNavToggleRight.classList.toggle("active", !isCollapsed);
+        }
+    }
+
+    if (btnToggleLeft) btnToggleLeft.addEventListener("click", toggleLeftPanel);
+    if (btnNavToggleLeft) btnNavToggleLeft.addEventListener("click", toggleLeftPanel);
+    if (btnToggleRight) btnToggleRight.addEventListener("click", toggleRightPanel);
+    if (btnNavToggleRight) btnNavToggleRight.addEventListener("click", toggleRightPanel);
+
+    // Keyboard shortcuts (Ctrl+B or 'c' for controls, 't' for telemetry)
+    window.addEventListener("keydown", (e) => {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+        if (e.key === "c" || e.key === "C") toggleLeftPanel();
+        if (e.key === "t" || e.key === "T") toggleRightPanel();
+    });
 
     // Raycast Inspector & 3D Click Interaction
     const container = document.getElementById("city3dViewport");
