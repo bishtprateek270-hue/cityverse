@@ -757,26 +757,20 @@ function buildTerrainMesh() {
         const r = Math.floor(i / cols);
 
         const elev = state.terrain.elevation_grid[r][c];
-        const isRiver = state.terrain.river_mask[r][c];
 
-        // Vertical elevation scaling
+        // Vertical elevation scaling - smooth continuous natural terrain
         let y = (elev - minElev) * 0.55;
-        if (isRiver) y -= 1.6; // Carve natural river channel below ground
-
         pos.setY(i, y);
 
-        // Hypsometric terrain vertex colors
+        // Hypsometric natural terrain vertex colors (seamless urban ground)
         const norm = (elev - minElev) / (maxElev - minElev);
         let cr, cg, cb;
-        if (isRiver) {
-            // Dark riverbed silt
-            cr = 0.08; cg = 0.12; cb = 0.16;
-        } else if (norm < 0.25) {
-            // Lowland valley slate-green
-            cr = 0.12 + norm * 0.1; cg = 0.18 + norm * 0.15; cb = 0.16 + norm * 0.1;
+        if (norm < 0.25) {
+            // Lowland valley parkland
+            cr = 0.13 + norm * 0.08; cg = 0.20 + norm * 0.10; cb = 0.16 + norm * 0.08;
         } else if (norm < 0.65) {
             // Mid-elevation urban asphalt & loam
-            cr = 0.18 + norm * 0.1; cg = 0.22 + norm * 0.1; cb = 0.24 + norm * 0.1;
+            cr = 0.18 + norm * 0.10; cg = 0.22 + norm * 0.10; cb = 0.24 + norm * 0.10;
         } else {
             // Highland rock
             cr = 0.28; cg = 0.32; cb = 0.35;
@@ -807,8 +801,13 @@ function buildWaterMesh() {
     geom.rotateX(-Math.PI / 2);
 
     const pos = geom.attributes.position;
+    const minElev = state.terrain.min_elevation_m;
     for (let i = 0; i < pos.count; i++) {
-        pos.setY(i, -100); // Submerged initially until water is added
+        const c = i % cols;
+        const r = Math.floor(i / cols);
+        const elev = state.terrain.elevation_grid[r][c];
+        const baseElevY = (elev - minElev) * 0.55;
+        pos.setY(i, baseElevY - 0.15); // Sits safely 0.15m beneath ground initially (no cliffs/chasms)
     }
 
     const mat = new THREE.MeshStandardMaterial({
@@ -828,6 +827,25 @@ function buildRoadNetwork3D() {
     state.roadLinesGroup = new THREE.Group();
     state.barriersGroup = new THREE.Group();
     state.roadGraph = {};
+    state.reciprocalEdges = {};
+
+    // 1. Map directed (u, v) pairs to identify reciprocal opposing edges for U-turns & dual-lane traffic
+    const edgeByUV = {};
+    state.roads.forEach(feat => {
+        const p = feat.properties;
+        edgeByUV[`${p.u}_${p.v}`] = p.edge_id;
+    });
+
+    state.roads.forEach(feat => {
+        const p = feat.properties;
+        const oppId = edgeByUV[`${p.v}_${p.u}`];
+        if (oppId) {
+            state.reciprocalEdges[p.edge_id] = oppId;
+        }
+    });
+
+    // 2. Track unique physical streets to render EXACTLY ONE 3D visual mesh per street (100% eliminating z-fighting & missing road sections)
+    const builtStreets = new Set();
 
     state.roads.forEach(feat => {
         const coords = feat.geometry.coordinates;
@@ -838,13 +856,11 @@ function buildRoadNetwork3D() {
         const p1 = worldTo3D(coords[0][0], coords[0][1]);
         const p2 = worldTo3D(coords[1][0], coords[1][1]);
 
-        // Sample elevation at road ends
-        let y1 = getTerrainElevation(coords[0][0], coords[0][1]) + 0.35;
-        let y2 = getTerrainElevation(coords[1][0], coords[1][1]) + 0.35;
+        let y1 = getTerrainElevation(coords[0][0], coords[0][1]) + 0.38;
+        let y2 = getTerrainElevation(coords[1][0], coords[1][1]) + 0.38;
 
         if (isBridge) {
-            // Elevate bridge deck cleanly above riverbed and channel water
-            const bridgeDeckY = Math.max(y1, y2) + 2.5;
+            const bridgeDeckY = Math.max(y1, y2) + 1.8;
             y1 = bridgeDeckY;
             y2 = bridgeDeckY;
         }
@@ -852,11 +868,11 @@ function buildRoadNetwork3D() {
         const startVec = new THREE.Vector3(p1.x, y1, p1.z);
         const endVec = new THREE.Vector3(p2.x, y2, p2.z);
 
-        // Store edge in traffic routing graph
         const length = startVec.distanceTo(endVec);
-        // Realistic Two-Way Road Widths
         const width = isHighway ? 4.6 : (p.road_class === "arterial" ? 3.4 : 2.6);
+        const streetKey = p.u < p.v ? `${p.u}_${p.v}` : `${p.v}_${p.u}`;
 
+        // Store directed edge in traffic graph
         state.roadGraph[p.edge_id] = {
             id: p.edge_id,
             start: startVec,
@@ -865,6 +881,7 @@ function buildRoadNetwork3D() {
             endWorld: { x: coords[1][0], y: coords[1][1] },
             u: p.u,
             v: p.v,
+            streetKey: streetKey,
             length: length,
             speedLimit: p.free_flow_speed_kmh || 40.0,
             roadClass: p.road_class,
@@ -874,28 +891,41 @@ function buildRoadNetwork3D() {
             waterDepth: 0.0
         };
 
-        // 3D Road Ribbon with Dual-Lane Markings & Center Divider Line (terrain conforming)
-        const roadGroup = createRoadRibbon(coords[0], coords[1], p1, p2, width, isHighway ? 0x94a3b8 : 0x334155, isBridge);
-        roadGroup.userData = { 
-            edgeId: p.edge_id, 
-            baseColor: isHighway ? 0x94a3b8 : 0x334155, 
-            width: width,
-            asphalt: roadGroup.userData.asphalt,
-            centerLine: roadGroup.userData.centerLine
-        };
-        state.roadLinesGroup.add(roadGroup);
+        // Render EXACTLY ONE 3D mesh and barricade pair per physical street
+        if (!builtStreets.has(streetKey)) {
+            builtStreets.add(streetKey);
 
-        // If it's a bridge, add bridge support piers underneath
-        if (isBridge) {
-            const bridgePillars = createBridgeSupportPillars(startVec, endVec);
-            state.roadLinesGroup.add(bridgePillars);
+            const roadGroup = createRoadRibbon(coords[0], coords[1], p1, p2, width, isHighway ? 0x94a3b8 : 0x334155, isBridge);
+            roadGroup.userData = { 
+                streetKey: streetKey,
+                edgeIds: [p.edge_id], 
+                baseColor: isHighway ? 0x94a3b8 : 0x334155, 
+                width: width,
+                asphalt: roadGroup.userData.asphalt,
+                centerLine: roadGroup.userData.centerLine
+            };
+            state.roadLinesGroup.add(roadGroup);
+
+            if (isBridge) {
+                const bridgePillars = createBridgeSupportPillars(startVec, endVec);
+                state.roadLinesGroup.add(bridgePillars);
+            }
+
+            const barrierPair = createRoadBarricadePair(coords[0], coords[1], p1, p2, width, isBridge);
+            barrierPair.userData = { streetKey: streetKey, edgeIds: [p.edge_id] };
+            barrierPair.visible = false;
+            state.barriersGroup.add(barrierPair);
+        } else {
+            // Append reciprocal edge id to existing visual meshes
+            const existingRoad = state.roadLinesGroup.children.find(m => m.userData && m.userData.streetKey === streetKey);
+            if (existingRoad && existingRoad.userData.edgeIds) {
+                existingRoad.userData.edgeIds.push(p.edge_id);
+            }
+            const existingBarrier = state.barriersGroup.children.find(b => b.userData && b.userData.streetKey === streetKey);
+            if (existingBarrier && existingBarrier.userData.edgeIds) {
+                existingBarrier.userData.edgeIds.push(p.edge_id);
+            }
         }
-
-        // Roadblock Barrier Pair (placed at both entrances of road segment at sampled elevation)
-        const barrierPair = createRoadBarricadePair(coords[0], coords[1], p1, p2, width, isBridge);
-        barrierPair.userData = { edgeId: p.edge_id };
-        barrierPair.visible = false;
-        state.barriersGroup.add(barrierPair);
     });
 
     state.scene.add(state.roadLinesGroup);
@@ -1443,39 +1473,37 @@ function buildRainWeatherFX() {
 // MOVING TRAFFIC SIMULATION (Cars Running, Braking, Diverting, Resuming)
 // =========================================================================
 
-function spawnTrafficFleet(count = 160) {
+function spawnTrafficFleet(count = 180) {
     state.trafficGroup = new THREE.Group();
     state.vehicles = [];
 
-    // Filter available edges to only open and dry roads (no flooded roads or water channels)
+    // Filter available directed edges to only open and dry roads (no flooded roads or water channels)
     const openDryEdges = Object.values(state.roadGraph).filter(e => !e.isClosed && (e.waterDepth || 0.0) < 0.05);
     const candidateEdges = openDryEdges.length > 0 ? openDryEdges : Object.values(state.roadGraph);
     if (candidateEdges.length === 0) return;
 
     const carColors = [0xf59e0b, 0xffffff, 0x38bdf8, 0xe2e8f0, 0x94a3b8, 0xef4444, 0x10b981];
 
-    // Spatial occupancy map to prevent initial spawn overlap
-    const laneOccupancy = new Map();
+    // Spatial occupancy map per directed edge to prevent initial spawn overlap
+    const edgeOccupancy = new Map();
 
     let spawned = 0;
     let attempts = 0;
     while (spawned < count && attempts < count * 8) {
         attempts++;
         const edge = candidateEdges[Math.floor(Math.random() * candidateEdges.length)];
-        const dir = Math.random() > 0.5 ? 1 : -1;
-        const laneKey = `${edge.id}_${dir}`;
 
-        if (!laneOccupancy.has(laneKey)) {
-            laneOccupancy.set(laneKey, []);
+        if (!edgeOccupancy.has(edge.id)) {
+            edgeOccupancy.set(edge.id, []);
         }
-        const existingTs = laneOccupancy.get(laneKey);
+        const existingTs = edgeOccupancy.get(edge.id);
 
-        // Pick a candidate position along edge with safe buffer spacing
+        // Pick a candidate position along directed edge with safe buffer spacing
         const candidateT = 0.12 + Math.random() * 0.76;
         const minGapT = 4.8 / Math.max(10.0, edge.length);
         const hasOverlap = existingTs.some(t => Math.abs(t - candidateT) < minGapT);
 
-        // At most 2 cars per lane on standard segments to ensure free-flowing traffic
+        // At most 2 cars per directed lane to ensure free-flowing traffic
         if (hasOverlap || existingTs.length >= 2) {
             continue;
         }
@@ -1485,7 +1513,7 @@ function spawnTrafficFleet(count = 160) {
         const isEmergency = (Math.random() < 0.08); // 8% Ambulances / Fire
         const color = isEmergency ? 0xef4444 : carColors[Math.floor(Math.random() * carColors.length)];
 
-        // 3D Car Body Mesh (compact scale to fit lanes cleanly)
+        // 3D Car Body Mesh (compact scale to fit lane cleanly)
         const carMesh = createCarMesh(color, isEmergency);
         state.trafficGroup.add(carMesh);
 
@@ -1496,7 +1524,6 @@ function spawnTrafficFleet(count = 160) {
             t: candidateT,
             baseSpeed: (13.0 + Math.random() * 8.0) * (isEmergency ? 1.4 : 1.0),
             currentSpeed: 13.0,
-            direction: dir,
             isEmergency: isEmergency,
             isStalled: false,
             waitingTimer: 0
@@ -1562,39 +1589,28 @@ function createCarMesh(colorHex, isEmergency) {
 function updateTraffic(dt) {
     if (!state.trafficGroup || state.vehicles.length === 0) return;
 
-    // 1. Group vehicles by lane (edgeId + direction) for car-following & anti-overlap physics
+    // 1. Group vehicles by directed edge (edgeId) for car-following & anti-overlap physics
     const laneGroups = new Map();
     state.vehicles.forEach(veh => {
-        const key = `${veh.edgeId}_${veh.direction}`;
-        if (!laneGroups.has(key)) laneGroups.set(key, []);
-        laneGroups.get(key).push(veh);
+        if (!laneGroups.has(veh.edgeId)) laneGroups.set(veh.edgeId, []);
+        laneGroups.get(veh.edgeId).push(veh);
     });
 
     // 2. Intra-Lane Car-Following Model (Intelligent Driver Model / Anti-Tailgating)
-    laneGroups.forEach((cars, key) => {
+    laneGroups.forEach((cars, edgeId) => {
         if (cars.length <= 1) return;
-        const dir = cars[0].direction;
-        const edge = state.roadGraph[cars[0].edgeId];
+        const edge = state.roadGraph[edgeId];
         if (!edge) return;
 
-        // Sort cars along travel direction:
-        // When dir === 1: larger t is ahead (0 -> 1)
-        // When dir === -1: smaller t is ahead (1 -> 0)
-        if (dir === 1) {
-            cars.sort((a, b) => a.t - b.t);
-        } else {
-            cars.sort((a, b) => b.t - a.t);
-        }
+        // Sort cars along travel direction: largest t is in front (0 -> 1)
+        cars.sort((a, b) => a.t - b.t);
 
         // Apply car-following headway constraint from rear to front
         for (let i = 0; i < cars.length - 1; i++) {
             const follower = cars[i];
             const leader = cars[i + 1];
 
-            const headwayDist = (dir === 1)
-                ? (leader.t - follower.t) * edge.length
-                : (follower.t - leader.t) * edge.length;
-
+            const headwayDist = (leader.t - follower.t) * edge.length;
             const safeGap = 5.0;       // Buffer to start matching speed (meters in 3D)
             const stopGap = 3.4;       // Bumper-to-bumper stopping distance (strictly no overlap)
 
@@ -1607,11 +1623,7 @@ function updateTraffic(dt) {
                 if (headwayDist < stopGap) {
                     follower.currentSpeed = 0.0;
                     const minGapT = stopGap / Math.max(10.0, edge.length);
-                    if (dir === 1) {
-                        follower.t = Math.min(follower.t, leader.t - minGapT);
-                    } else {
-                        follower.t = Math.max(follower.t, leader.t + minGapT);
-                    }
+                    follower.t = Math.min(follower.t, leader.t - minGapT);
                 }
             }
         }
@@ -1628,35 +1640,42 @@ function updateTraffic(dt) {
         // Hydrodynamic Passability & Hazard Reaction
         if (isRoadClosed) {
             if (!veh.isEmergency) {
-                // Check if car is approaching the barricade boundary or flood zone
-                const atEndBarricade = (veh.direction === 1 && veh.t >= 0.80);
-                const atStartBarricade = (veh.direction === -1 && veh.t <= 0.20);
-                const inFlooding = (water >= 0.15);
+                // Approaching the barricade (t >= 0.78) or facing flood water:
+                const approachingBarricade = (veh.t >= 0.78);
+                const facingWater = (water >= 0.15);
 
-                if (atEndBarricade || atStartBarricade || inFlooding) {
-                    // Decelerate smoothly to a stop
+                if (approachingBarricade || facingWater) {
+                    // Decelerate smoothly to a stop before the barricade
                     veh.currentSpeed = Math.max(0.0, veh.currentSpeed - 14.0 * dt);
                     veh.waitingTimer += dt;
 
-                    // Execute smooth U-turn into opposing lane to retreat back towards dry intersection
+                    // Execute smooth U-turn into reciprocal opposing lane to retreat back towards dry intersection
                     if (veh.currentSpeed <= 0.3 || veh.waitingTimer > 0.4) {
-                        veh.direction = -veh.direction;
-                        veh.currentSpeed = veh.baseSpeed * 0.55;
-                        veh.isStalled = false;
-                        veh.waitingTimer = 0;
-                        if (veh.direction === 1) veh.t = Math.max(veh.t, 0.22);
-                        if (veh.direction === -1) veh.t = Math.min(veh.t, 0.78);
+                        const returnEdgeId = state.reciprocalEdges[veh.edgeId];
+                        const returnEdge = returnEdgeId ? state.roadGraph[returnEdgeId] : null;
+
+                        if (returnEdge) {
+                            // Switch to opposing lane: physical position is exactly (1.0 - t)!
+                            veh.edgeId = returnEdge.id;
+                            veh.t = npClamp(1.0 - veh.t, 0.05, 0.95);
+                            veh.currentSpeed = veh.baseSpeed * 0.55;
+                            veh.isStalled = false;
+                            veh.waitingTimer = 0;
+                            edge = returnEdge; // update reference for step 4
+                        } else {
+                            veh.isStalled = true;
+                        }
                     } else {
                         veh.isStalled = true;
                     }
                 } else {
-                    // Driving in reverse / retreat direction towards the open intersection
+                    // Traveling back along return lane away from closure towards open intersection
                     veh.currentSpeed = Math.min(veh.baseSpeed * 0.70, veh.currentSpeed + 7.0 * dt);
                     veh.isStalled = false;
                     veh.waitingTimer = 0;
                 }
 
-                // If completely stranded in severe flood (>0.30m), stay stalled with flashing hazards
+                // If completely stranded in deep flood (>0.30m), hazard lights flash
                 if (water >= 0.30) {
                     veh.currentSpeed = 0.0;
                     veh.isStalled = true;
@@ -1691,51 +1710,60 @@ function updateTraffic(dt) {
             veh.waitingTimer = 0;
         }
 
-        // Kinematic Position Step
+        // Kinematic Position Step forward along edge (0 -> 1)
         const stepDist = (veh.currentSpeed * dt) / Math.max(12.0, edge.length);
-        veh.t += stepDist * veh.direction;
+        veh.t += stepDist;
 
-        // Approaching road intersection (edge endpoint)
-        if (veh.t >= 1.0 || veh.t <= 0.0) {
-            const hitNode = (veh.t >= 1.0) ? edge.v : edge.u;
+        // Approaching road intersection (edge endpoint: t >= 1.0)
+        if (veh.t >= 1.0) {
+            const hitNode = edge.v;
+            const oppEdgeId = state.reciprocalEdges[edge.id];
 
-            // Find connected edges that are open and dry
-            const availableConnections = Object.values(state.roadGraph).filter(e => 
-                (e.u === hitNode || e.v === hitNode) && 
-                e.id !== edge.id && 
+            // Find outgoing edges from this intersection that are open and dry
+            const availableOutgoing = Object.values(state.roadGraph).filter(e => 
+                e.u === hitNode && 
+                e.id !== oppEdgeId && 
                 !e.isClosed && 
                 (e.waterDepth || 0.0) < 0.05
             );
 
-            if (availableConnections.length > 0) {
-                const nextEdge = availableConnections[Math.floor(Math.random() * availableConnections.length)];
+            if (availableOutgoing.length > 0) {
+                const nextEdge = availableOutgoing[Math.floor(Math.random() * availableOutgoing.length)];
                 veh.edgeId = nextEdge.id;
-                veh.t = (nextEdge.u === hitNode) ? 0.02 : 0.98;
-                veh.direction = (nextEdge.u === hitNode) ? 1 : -1;
+                veh.t = 0.02; // Seamless continuous handoff at intersection
                 veh.currentSpeed = veh.baseSpeed * 0.75;
                 veh.isStalled = false;
                 veh.waitingTimer = 0;
+                edge = nextEdge; // update reference for step 4
             } else {
-                // Dead end or surrounded by barricades: U-turn back onto open road
-                veh.direction *= -1;
-                veh.t = npClamp(veh.t, 0.03, 0.97);
+                // Dead end or surrounded by barricades: U-turn back onto return edge
+                const returnEdgeId = state.reciprocalEdges[edge.id];
+                if (returnEdgeId) {
+                    veh.edgeId = returnEdgeId;
+                    veh.t = 0.05;
+                    veh.currentSpeed = veh.baseSpeed * 0.5;
+                    veh.isStalled = false;
+                    edge = state.roadGraph[returnEdgeId];
+                } else {
+                    veh.currentSpeed = 0.0;
+                    veh.isStalled = true;
+                    veh.t = 0.98;
+                }
             }
         }
 
         // Clamp position along edge
         veh.t = npClamp(veh.t, 0.0, 1.0);
 
-        // 4. Compute 3D Position with Two-Way Lane Offset & Exact Terrain Elevation
+        // 4. Compute 3D Position with Right-Hand Traffic Lane Offset & Exact Terrain Elevation
         const dx = edge.end.x - edge.start.x;
         const dz = edge.end.z - edge.start.z;
         const forward = new THREE.Vector3(dx, 0, dz).normalize();
         const up = new THREE.Vector3(0, 1, 0);
         const right = new THREE.Vector3().crossVectors(forward, up).normalize();
 
-        // Driving on the right-hand side of the road:
-        // direction = 1 -> offset along +right (Right Lane)
-        // direction = -1 -> offset along -right (Opposing Lane's Right)
-        const laneOffsetDist = (edge.width * 0.26) * veh.direction;
+        // Driving on the right-hand lane (offset along +right):
+        const laneOffsetDist = edge.width * 0.26;
         const lateralShift = right.clone().multiplyScalar(laneOffsetDist);
 
         const curWx = edge.startWorld.x * (1.0 - veh.t) + edge.endWorld.x * veh.t;
@@ -1754,8 +1782,8 @@ function updateTraffic(dt) {
         const finalPos = new THREE.Vector3(posX, roadElevY + 0.35, posZ);
         veh.mesh.position.copy(finalPos);
 
-        // Orient vehicle along lane direction, matching terrain slope
-        const lookT = npClamp(veh.t + veh.direction * 0.04, 0.0, 1.0);
+        // Orient vehicle along lane direction, pitching with road slope
+        const lookT = npClamp(veh.t + 0.04, 0.0, 1.0);
         const lookWx = edge.startWorld.x * (1.0 - lookT) + edge.endWorld.x * lookT;
         const lookWy = edge.startWorld.y * (1.0 - lookT) + edge.endWorld.y * lookT;
         const lookElevY = edge.isBridge ? edge.start.y : (getTerrainElevation(lookWx, lookWy) + 0.38);
@@ -1765,7 +1793,7 @@ function updateTraffic(dt) {
 
         const lookTarget = new THREE.Vector3(lookPosX, lookElevY + 0.35, lookPosZ);
         if (lookTarget.distanceTo(finalPos) < 0.001) {
-            lookTarget.add(forward.clone().multiplyScalar(veh.direction * 0.5));
+            lookTarget.add(forward.clone().multiplyScalar(0.5));
         }
         veh.mesh.lookAt(lookTarget);
 
@@ -1919,20 +1947,17 @@ function update3DWaterSurface(depthGrid) {
         const c = i % cols;
         const r = Math.floor(i / cols);
 
-        const h = depthGrid[r][c];
+        const h = depthGrid[r][c] || 0.0;
         const elev = state.terrain.elevation_grid[r][c];
-        const isRiver = state.terrain.river_mask[r][c];
+        const baseElevY = (elev - minElev) * 0.55;
 
-        let baseElevY = (elev - minElev) * 0.55;
-        if (isRiver) baseElevY -= 1.6;
-
-        if (h > 0.04 || isRiver) {
-            // Physically rise water surface above terrain
-            const waterHeight = Math.max(0.2, h * 1.6);
-            pos.setY(i, baseElevY + waterHeight + 0.15);
+        if (h > 0.03) {
+            // Water physically rises above terrain surface (smooth natural lake/river flood surface)
+            const waterHeight = Math.max(0.08, h * 0.75);
+            pos.setY(i, baseElevY + waterHeight);
         } else {
-            // Submerged dry ground
-            pos.setY(i, -100);
+            // Dry ground: water surface sits safely 0.15m beneath terrain (strictly no 100m cliff walls or bottomless trenches)
+            pos.setY(i, baseElevY - 0.15);
         }
     }
 
@@ -1944,18 +1969,19 @@ function update3DRoadConditions(depthGrid) {
     if (!state.roadLinesGroup || !depthGrid) return;
 
     state.roadLinesGroup.children.forEach(mesh => {
-        const edgeId = mesh.userData.edgeId;
-        if (!edgeId) return; // Skip non-edge children like bridge piers
-        const edge = state.roadGraph[edgeId];
-        if (!edge) return;
+        const edgeIds = mesh.userData.edgeIds || (mesh.userData.edgeId ? [mesh.userData.edgeId] : null);
+        if (!edgeIds || edgeIds.length === 0) return; // Skip non-edge children like bridge piers
+
+        const primaryEdge = state.roadGraph[edgeIds[0]];
+        if (!primaryEdge) return;
 
         // Sample water depth across 5 points along road segment using exact world coords
         let maxWater = 0.0;
         const steps = 4;
         for (let s = 0; s <= steps; s++) {
             const frac = s / steps;
-            const wx = edge.startWorld.x + (edge.endWorld.x - edge.startWorld.x) * frac;
-            const wy = edge.startWorld.y + (edge.endWorld.y - edge.startWorld.y) * frac;
+            const wx = primaryEdge.startWorld.x + (primaryEdge.endWorld.x - primaryEdge.startWorld.x) * frac;
+            const wy = primaryEdge.startWorld.y + (primaryEdge.endWorld.y - primaryEdge.startWorld.y) * frac;
             const c = Math.floor(npClamp(wx / 50.0, 0, 119));
             const r = Math.floor(npClamp((6000.0 - wy) / 50.0, 0, 119));
             const d = depthGrid[r][c] || 0.0;
@@ -1963,37 +1989,40 @@ function update3DRoadConditions(depthGrid) {
         }
 
         // Bridge handling: bridge is elevated above river
-        if (edge.isBridge) {
-            // Bridges only submerge if water reaches bridge deck height (overtopping >= 2.5m)
-            if (maxWater < 2.5) {
-                edge.waterDepth = 0.0;
-            } else {
-                edge.waterDepth = maxWater - 2.5;
-            }
-        } else {
-            edge.waterDepth = maxWater;
+        if (primaryEdge.isBridge) {
+            maxWater = Math.max(0.0, maxWater - 2.5);
         }
 
-        // Update road passability status
-        edge.isClosed = (edge.waterDepth >= 0.15);
+        // Update BOTH directed edges in state.roadGraph
+        edgeIds.forEach(eid => {
+            const edge = state.roadGraph[eid];
+            if (edge) {
+                edge.waterDepth = maxWater;
+                edge.isClosed = (maxWater >= 0.15);
+            }
+        });
 
-        // Find associated barrier mesh group
-        const barrier = state.barriersGroup.children.find(b => b.userData.edgeId === edgeId);
+        // Find associated barrier mesh group by streetKey or edgeId
+        const streetKey = mesh.userData.streetKey;
+        const barrier = state.barriersGroup.children.find(b => 
+            (streetKey && b.userData.streetKey === streetKey) || 
+            (b.userData.edgeId && edgeIds.includes(b.userData.edgeId))
+        );
         const asphalt = mesh.userData.asphalt || mesh;
 
-        if (edge.waterDepth >= 0.30) {
+        if (maxWater >= 0.30) {
             // Severe Flooding / Emergency Cutoff: Hazard Red ribbon + Active Barricades
             asphalt.material.color.setHex(0xef4444);
             asphalt.material.emissive.setHex(0xb91c1c);
             asphalt.material.emissiveIntensity = 0.8;
             if (barrier) barrier.visible = true;
-        } else if (edge.waterDepth >= 0.15) {
+        } else if (maxWater >= 0.15) {
             // Passenger Stall / Closed Road: Glowing Hazard Orange-Red + Active Barricades
             asphalt.material.color.setHex(0xf97316);
             asphalt.material.emissive.setHex(0xc2410c);
             asphalt.material.emissiveIntensity = 0.6;
             if (barrier) barrier.visible = true;
-        } else if (edge.waterDepth >= 0.05) {
+        } else if (maxWater >= 0.05) {
             // Shallow Ponding: Speed Degraded (Amber)
             asphalt.material.color.setHex(0xeab308);
             asphalt.material.emissive.setHex(0x78350f);
