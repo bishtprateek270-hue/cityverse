@@ -193,13 +193,95 @@ function interpolateHexColor(hex1, hex2, t) {
     return `rgb(${r},${g},${b})`;
 }
 
-function createCommercialGlassTexture() {
+// =========================================================================
+// ARCHITECTURAL PALETTES & PROCEDURAL TEXTURES (COLORS & CORES)
+// =========================================================================
+
+const ARCH_PALETTES = {
+    azure_glass: {
+        name: "Azure Glass Curtain Wall",
+        baseBg: "#0284c7",
+        spandrel: "#cbd5e1",
+        spandrelShadow: "#475569",
+        mullion: "#e2e8f0",
+        mullionShadow: "#334155",
+        winDark: "#0369a1",
+        winReflect: "#38bdf8",
+        lights: ["#fef08a", "#bae6fd", "#e0f2fe", "#fde047"],
+        roughness: 0.16,
+        metalness: 0.82,
+        crownColor: 0x38bdf8,
+        baseEmissive: 0.28
+    },
+    bronze_glass: {
+        name: "Warm Bronze & Champagne High-Rise",
+        baseBg: "#78350f",
+        spandrel: "#d97706",
+        spandrelShadow: "#451a03",
+        mullion: "#b45309",
+        mullionShadow: "#291002",
+        winDark: "#451a03",
+        winReflect: "#f59e0b",
+        lights: ["#fef3c7", "#fde68a", "#fed7aa", "#f59e0b"],
+        roughness: 0.20,
+        metalness: 0.78,
+        crownColor: 0xf59e0b,
+        baseEmissive: 0.26
+    },
+    silver_tower: {
+        name: "Silver & Platinum Modern Tower",
+        baseBg: "#f1f5f9",
+        spandrel: "#e2e8f0",
+        spandrelShadow: "#1e293b",
+        mullion: "#cbd5e1",
+        mullionShadow: "#0f172a",
+        winDark: "#1e3a5f",
+        winReflect: "#60a5fa",
+        lights: ["#fef9c3", "#93c5fd", "#ffffff", "#bae6fd"],
+        roughness: 0.35,
+        metalness: 0.38,
+        crownColor: 0xffffff,
+        baseEmissive: 0.25
+    },
+    emerald_glass: {
+        name: "Emerald Low-E Eco-Tower",
+        baseBg: "#0f766e",
+        spandrel: "#0d9488",
+        spandrelShadow: "#042f2e",
+        mullion: "#14b8a6",
+        mullionShadow: "#021a19",
+        winDark: "#042f2e",
+        winReflect: "#5eead4",
+        lights: ["#fef08a", "#a7f3d0", "#fde047", "#6ee7b7"],
+        roughness: 0.18,
+        metalness: 0.75,
+        crownColor: 0x10b981,
+        baseEmissive: 0.25
+    },
+    cobalt_tower: {
+        name: "Cobalt Prestige Navy Tower",
+        baseBg: "#1e3a8a",
+        spandrel: "#2563eb",
+        spandrelShadow: "#0c1b33",
+        mullion: "#f8fafc",
+        mullionShadow: "#172554",
+        winDark: "#0c1b33",
+        winReflect: "#60a5fa",
+        lights: ["#dbeafe", "#bfdbfe", "#fef08a", "#93c5fd"],
+        roughness: 0.15,
+        metalness: 0.85,
+        crownColor: 0x60a5fa,
+        baseEmissive: 0.27
+    }
+};
+
+function createGlassCurtainTexture(p) {
     const canvas = document.createElement("canvas");
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#0a0f1d";
+    ctx.fillStyle = p.baseBg;
     ctx.fillRect(0, 0, 512, 512);
 
     const floors = 16;
@@ -209,130 +291,283 @@ function createCommercialGlassTexture() {
 
     for (let f = 0; f < floors; f++) {
         const y = f * floorH;
-        ctx.fillStyle = "#1e293b";
-        ctx.fillRect(0, y, 512, 5);
+
+        // Horizontal architectural spandrel band
+        ctx.fillStyle = p.spandrel;
+        ctx.fillRect(0, y, 512, 6);
+        ctx.fillStyle = p.spandrelShadow;
+        ctx.fillRect(0, y + 5, 512, 1);
 
         for (let b = 0; b < bays; b++) {
             const x = b * bayW;
-            ctx.fillStyle = "#0f172a";
-            ctx.fillRect(x, y + 5, 3, floorH - 5);
+
+            // Vertical structural mullion rib
+            ctx.fillStyle = p.mullion;
+            ctx.fillRect(x, y + 6, 3, floorH - 6);
+            ctx.fillStyle = p.mullionShadow;
+            ctx.fillRect(x + 2, y + 6, 1, floorH - 6);
 
             const winX = x + 3;
-            const winY = y + 5;
+            const winY = y + 6;
             const winW = bayW - 4;
-            const winH = floorH - 6;
+            const winH = floorH - 7;
 
             const hash = Math.sin(f * 29.3 + b * 71.9) * 10000;
             const rand = hash - Math.floor(hash);
 
-            if (rand > 0.58) {
+            if (rand > 0.52) {
+                // Illuminated office workspace
                 const grad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
-                if (rand > 0.88) {
-                    grad.addColorStop(0, "#fef08a");
-                    grad.addColorStop(1, "#f59e0b");
-                } else if (rand > 0.74) {
-                    grad.addColorStop(0, "#e0f2fe");
-                    grad.addColorStop(1, "#93c5fd");
+                const lightCol = p.lights[Math.floor(rand * p.lights.length) % p.lights.length];
+                grad.addColorStop(0, lightCol);
+                grad.addColorStop(1, p.winDark);
+                ctx.fillStyle = grad;
+            } else {
+                // Daytime reflective glass pane reflecting the sky
+                const grad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+                grad.addColorStop(0, p.winReflect);
+                grad.addColorStop(1, p.winDark);
+                ctx.fillStyle = grad;
+            }
+            ctx.fillRect(winX, winY, winW, winH);
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createGlassCurtainEmissiveTexture(p) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const floors = 16;
+    const bays = 16;
+    const bayW = 512 / bays;
+    const floorH = 512 / floors;
+
+    for (let f = 0; f < floors; f++) {
+        const y = f * floorH;
+        for (let b = 0; b < bays; b++) {
+            const x = b * bayW;
+            const winX = x + 3;
+            const winY = y + 6;
+            const winW = bayW - 4;
+            const winH = floorH - 7;
+
+            const hash = Math.sin(f * 29.3 + b * 71.9) * 10000;
+            const rand = hash - Math.floor(hash);
+
+            if (rand > 0.52) {
+                const lightCol = p.lights[Math.floor(rand * p.lights.length) % p.lights.length];
+                ctx.fillStyle = lightCol;
+                ctx.fillRect(winX, winY, winW, winH);
+            }
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createTerracottaBrickTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    // Mortar joint background
+    ctx.fillStyle = "#d6d3d1";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const floors = 12;
+    const bays = 10;
+    const bayW = 512 / bays;
+    const floorH = 512 / floors;
+
+    const brickColors = ["#c2410c", "#9a3412", "#ea580c", "#b91c1c", "#7c2d12"];
+
+    for (let f = 0; f < floors; f++) {
+        const y = f * floorH;
+
+        // Decorative stone cornice / belt course
+        ctx.fillStyle = "#f5f5f4";
+        ctx.fillRect(0, y + floorH - 8, 512, 6);
+        ctx.fillStyle = "#78716c";
+        ctx.fillRect(0, y + floorH - 2, 512, 2);
+
+        // Brick courses
+        const rowsPerFloor = 6;
+        const rowH = (floorH - 8) / rowsPerFloor;
+        for (let r = 0; r < rowsPerFloor; r++) {
+            const ry = y + r * rowH;
+            const brickW = 18;
+            const offset = (r % 2 === 0) ? 0 : 9;
+            for (let bx = -offset; bx < 512; bx += brickW) {
+                const hash = Math.sin(f * 43.1 + r * 19.7 + bx * 7.3) * 1000;
+                const cIdx = Math.floor(Math.abs(hash)) % brickColors.length;
+                ctx.fillStyle = brickColors[cIdx];
+                ctx.fillRect(bx + 1, ry + 1, brickW - 2, rowH - 2);
+            }
+        }
+
+        // Punched residential windows with stone lintels and sills
+        for (let b = 0; b < bays; b++) {
+            const x = b * bayW;
+            const winX = x + 10;
+            const winY = y + 8;
+            const winW = bayW - 20;
+            const winH = floorH - 24;
+
+            // Stone lintel (top)
+            ctx.fillStyle = "#f8fafc";
+            ctx.fillRect(winX - 2, winY - 3, winW + 4, 3);
+            // Stone sill (bottom)
+            ctx.fillStyle = "#e2e8f0";
+            ctx.fillRect(winX - 3, winY + winH, winW + 6, 3);
+
+            // Dark window frame
+            ctx.fillStyle = "#292524";
+            ctx.fillRect(winX, winY, winW, winH);
+
+            const hash = Math.sin(f * 37.1 + b * 61.3) * 10000;
+            const rand = hash - Math.floor(hash);
+
+            if (rand > 0.40) {
+                const grad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+                if (rand > 0.75) {
+                    grad.addColorStop(0, "#fef3c7");
+                    grad.addColorStop(1, "#fde68a");
                 } else {
                     grad.addColorStop(0, "#fed7aa");
                     grad.addColorStop(1, "#fb923c");
                 }
                 ctx.fillStyle = grad;
             } else {
+                ctx.fillStyle = "#1c1917";
+            }
+            ctx.fillRect(winX + 2, winY + 2, winW - 4, winH - 4);
+
+            // Window muntins (crossbars)
+            ctx.fillStyle = "#44403c";
+            ctx.fillRect(winX + winW / 2 - 1, winY + 2, 2, winH - 4);
+            ctx.fillRect(winX + 2, winY + winH / 2 - 1, winW - 4, 2);
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createTerracottaBrickEmissiveTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const floors = 12;
+    const bays = 10;
+    const bayW = 512 / bays;
+    const floorH = 512 / floors;
+
+    for (let f = 0; f < floors; f++) {
+        const y = f * floorH;
+        for (let b = 0; b < bays; b++) {
+            const x = b * bayW;
+            const winX = x + 10;
+            const winY = y + 8;
+            const winW = bayW - 20;
+            const winH = floorH - 24;
+
+            const hash = Math.sin(f * 37.1 + b * 61.3) * 10000;
+            const rand = hash - Math.floor(hash);
+
+            if (rand > 0.40) {
+                ctx.fillStyle = (rand > 0.75) ? "#fef3c7" : "#fed7aa";
+                ctx.fillRect(winX + 2, winY + 2, winW - 4, winH - 4);
+            }
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createLimestoneTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    // Natural cream French limestone base
+    ctx.fillStyle = "#f5f5f4";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const floors = 14;
+    const bays = 12;
+    const bayW = 512 / bays;
+    const floorH = 512 / floors;
+
+    for (let f = 0; f < floors; f++) {
+        const y = f * floorH;
+
+        // Classical stone cornice / entablature
+        ctx.fillStyle = "#e7e5e4";
+        ctx.fillRect(0, y, 512, 5);
+        ctx.fillStyle = "#a8a29e";
+        ctx.fillRect(0, y + 4, 512, 1);
+
+        for (let b = 0; b < bays; b++) {
+            const x = b * bayW;
+
+            // Fluted stone pilasters between window bays
+            ctx.fillStyle = "#d6d3d1";
+            ctx.fillRect(x, y + 5, 4, floorH - 5);
+            ctx.fillStyle = "#f5f5f4";
+            ctx.fillRect(x + 2, y + 5, 2, floorH - 5);
+
+            // Punch windows with bronze trim
+            const winX = x + 7;
+            const winY = y + 8;
+            const winW = bayW - 14;
+            const winH = floorH - 16;
+
+            ctx.fillStyle = "#44403c";
+            ctx.fillRect(winX, winY, winW, winH);
+
+            const hash = Math.sin(f * 31.7 + b * 53.9) * 10000;
+            const rand = hash - Math.floor(hash);
+
+            if (rand > 0.42) {
                 const grad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
-                grad.addColorStop(0, "#1e3a5f");
-                grad.addColorStop(1, "#0a192f");
+                if (rand > 0.78) {
+                    grad.addColorStop(0, "#fef3c7");
+                    grad.addColorStop(1, "#fde68a");
+                } else {
+                    grad.addColorStop(0, "#e0f2fe");
+                    grad.addColorStop(1, "#93c5fd");
+                }
                 ctx.fillStyle = grad;
-            }
-            ctx.fillRect(winX, winY, winW, winH);
-        }
-    }
-
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    return tex;
-}
-
-function createCommercialEmissiveTexture() {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext("2d");
-
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, 512, 512);
-
-    const floors = 16;
-    const bays = 16;
-    const bayW = 512 / bays;
-    const floorH = 512 / floors;
-
-    for (let f = 0; f < floors; f++) {
-        const y = f * floorH;
-        for (let b = 0; b < bays; b++) {
-            const x = b * bayW;
-            const winX = x + 3;
-            const winY = y + 5;
-            const winW = bayW - 4;
-            const winH = floorH - 6;
-
-            const hash = Math.sin(f * 29.3 + b * 71.9) * 10000;
-            const rand = hash - Math.floor(hash);
-
-            if (rand > 0.58) {
-                if (rand > 0.88) ctx.fillStyle = "#fef08a";
-                else if (rand > 0.74) ctx.fillStyle = "#93c5fd";
-                else ctx.fillStyle = "#fed7aa";
-                ctx.fillRect(winX, winY, winW, winH);
-            }
-        }
-    }
-
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    return tex;
-}
-
-function createResidentialTexture() {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext("2d");
-
-    ctx.fillStyle = "#334155";
-    ctx.fillRect(0, 0, 512, 512);
-
-    const floors = 12;
-    const bays = 10;
-    const bayW = 512 / bays;
-    const floorH = 512 / floors;
-
-    for (let f = 0; f < floors; f++) {
-        const y = f * floorH;
-        ctx.fillStyle = "#475569";
-        ctx.fillRect(0, y + floorH - 8, 512, 7);
-
-        for (let b = 0; b < bays; b++) {
-            const x = b * bayW;
-            const winX = x + 10;
-            const winY = y + 8;
-            const winW = bayW - 20;
-            const winH = floorH - 22;
-
-            ctx.fillStyle = "#1e293b";
-            ctx.fillRect(winX - 3, winY - 3, winW + 6, winH + 6);
-
-            const hash = Math.sin(f * 37.1 + b * 61.3) * 10000;
-            const rand = hash - Math.floor(hash);
-
-            if (rand > 0.45) {
-                ctx.fillStyle = rand > 0.75 ? "#fef3c7" : "#fde68a";
             } else {
-                ctx.fillStyle = "#0f172a";
+                ctx.fillStyle = "#1c1917";
             }
-            ctx.fillRect(winX, winY, winW, winH);
+            ctx.fillRect(winX + 2, winY + 2, winW - 4, winH - 4);
         }
     }
 
@@ -342,7 +577,7 @@ function createResidentialTexture() {
     return tex;
 }
 
-function createResidentialEmissiveTexture() {
+function createLimestoneEmissiveTexture() {
     const canvas = document.createElement("canvas");
     canvas.width = 512;
     canvas.height = 512;
@@ -351,8 +586,8 @@ function createResidentialEmissiveTexture() {
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, 512, 512);
 
-    const floors = 12;
-    const bays = 10;
+    const floors = 14;
+    const bays = 12;
     const bayW = 512 / bays;
     const floorH = 512 / floors;
 
@@ -360,17 +595,17 @@ function createResidentialEmissiveTexture() {
         const y = f * floorH;
         for (let b = 0; b < bays; b++) {
             const x = b * bayW;
-            const winX = x + 10;
+            const winX = x + 7;
             const winY = y + 8;
-            const winW = bayW - 20;
-            const winH = floorH - 22;
+            const winW = bayW - 14;
+            const winH = floorH - 16;
 
-            const hash = Math.sin(f * 37.1 + b * 61.3) * 10000;
+            const hash = Math.sin(f * 31.7 + b * 53.9) * 10000;
             const rand = hash - Math.floor(hash);
 
-            if (rand > 0.45) {
-                ctx.fillStyle = rand > 0.75 ? "#fef3c7" : "#fde68a";
-                ctx.fillRect(winX, winY, winW, winH);
+            if (rand > 0.42) {
+                ctx.fillStyle = (rand > 0.78) ? "#fef3c7" : "#93c5fd";
+                ctx.fillRect(winX + 2, winY + 2, winW - 4, winH - 4);
             }
         }
     }
@@ -379,6 +614,89 @@ function createResidentialEmissiveTexture() {
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
     return tex;
+}
+
+function createElevatorCoreTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+
+    // Dark graphite metallic core wall
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(0, 0, 256, 256);
+
+    // Architectural horizontal acoustic louvers
+    for (let y = 16; y < 180; y += 8) {
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(16, y, 224, 4);
+        ctx.fillStyle = "#475569";
+        ctx.fillRect(16, y + 4, 224, 2);
+    }
+
+    // Heavy steel mechanical access service door
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(96, 185, 64, 71);
+    ctx.fillStyle = "#334155";
+    ctx.fillRect(99, 188, 58, 68);
+
+    // Door handle & caution signage
+    ctx.fillStyle = "#facc15";
+    ctx.fillRect(116, 205, 24, 10);
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillRect(150, 225, 4, 8);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createLobbyGlassTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext("2d");
+
+    // Warm golden illuminated interior atrium
+    const grad = ctx.createLinearGradient(0, 0, 0, 128);
+    grad.addColorStop(0, "#fef3c7");
+    grad.addColorStop(0.6, "#fde68a");
+    grad.addColorStop(1, "#38bdf8");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 128);
+
+    // Structural steel framing
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(0, 0, 256, 8);
+    ctx.fillRect(0, 120, 256, 8);
+
+    // Revolving doors & vestibule mullions
+    for (let x = 0; x <= 256; x += 32) {
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(x, 0, 4, 128);
+        ctx.fillStyle = "#cbd5e1";
+        ctx.fillRect(x + 1, 0, 2, 128);
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+// Backward-compatible aliases
+function createCommercialGlassTexture() {
+    return createGlassCurtainTexture(ARCH_PALETTES.azure_glass);
+}
+function createCommercialEmissiveTexture() {
+    return createGlassCurtainEmissiveTexture(ARCH_PALETTES.azure_glass);
+}
+function createResidentialTexture() {
+    return createTerracottaBrickTexture();
+}
+function createResidentialEmissiveTexture() {
+    return createTerracottaBrickEmissiveTexture();
 }
 
 function createIndustrialTexture() {
@@ -1229,57 +1547,120 @@ function buildBuildings3D() {
     state.buildingsGroup = new THREE.Group();
     state.aviationBeacons = [];
 
-    // Initialize Procedural Facade Textures & Materials
-    const commTex = createCommercialGlassTexture();
-    const commEmissiveTex = createCommercialEmissiveTexture();
-    const resTex = createResidentialTexture();
-    const resEmissiveTex = createResidentialEmissiveTexture();
-    const indTex = createIndustrialTexture();
+    // Shared Base Roof & Helipad Materials
     const roofTex = createRoofTexture();
     const helipadTex = createHelipadTexture();
-
-    // Wall & Roof Materials
-    const commWallMat = new THREE.MeshStandardMaterial({
-        map: commTex,
-        emissiveMap: commEmissiveTex,
-        emissive: new THREE.Color(0xffffff),
-        emissiveIntensity: 0.25,
-        roughness: 0.25,
-        metalness: 0.65
-    });
-    commWallMat.userData = { baseEmissive: 0.25 };
-
-    const resWallMat = new THREE.MeshStandardMaterial({
-        map: resTex,
-        emissiveMap: resEmissiveTex,
-        emissive: new THREE.Color(0xffffff),
-        emissiveIntensity: 0.18,
-        roughness: 0.55,
-        metalness: 0.20
-    });
-    resWallMat.userData = { baseEmissive: 0.18 };
-
-    const indWallMat = new THREE.MeshStandardMaterial({
-        map: indTex,
-        roughness: 0.65,
-        metalness: 0.40
-    });
-
     const roofMat = new THREE.MeshStandardMaterial({
         map: roofTex,
         roughness: 0.85,
         metalness: 0.10
     });
-
     const helipadMat = new THREE.MeshStandardMaterial({
         map: helipadTex,
         roughness: 0.45,
         metalness: 0.20
     });
 
-    const commMaterials = [commWallMat, commWallMat, roofMat, roofMat, commWallMat, commWallMat];
-    const resMaterials = [resWallMat, resWallMat, roofMat, roofMat, resWallMat, resWallMat];
-    const indMaterials = [indWallMat, indWallMat, roofMat, roofMat, indWallMat, indWallMat];
+    // Central Elevator & Mechanical Penthouse Core Materials ("cors")
+    const coreTex = createElevatorCoreTexture();
+    const coreWallMat = new THREE.MeshStandardMaterial({
+        map: coreTex,
+        roughness: 0.50,
+        metalness: 0.65
+    });
+    const coreRoofMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        roughness: 0.90,
+        metalness: 0.10
+    });
+    const coreMaterials = [coreWallMat, coreWallMat, coreRoofMat, coreRoofMat, coreWallMat, coreWallMat];
+
+    // Ground Floor Entrance Lobby Atrium Glass
+    const lobbyTex = createLobbyGlassTexture();
+    const lobbyGlassMat = new THREE.MeshStandardMaterial({
+        map: lobbyTex,
+        emissiveMap: lobbyTex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 0.35,
+        roughness: 0.20,
+        metalness: 0.40
+    });
+    lobbyGlassMat.userData = { baseEmissive: 0.35 };
+
+    // Initialize 5 Distinct Curtain-Glass Architectural Themes
+    const glassThemes = {};
+    for (const [key, conf] of Object.entries(ARCH_PALETTES)) {
+        const tex = createGlassCurtainTexture(conf);
+        const emTex = createGlassCurtainEmissiveTexture(conf);
+        const wallMat = new THREE.MeshStandardMaterial({
+            map: tex,
+            emissiveMap: emTex,
+            emissive: new THREE.Color(0xffffff),
+            emissiveIntensity: conf.baseEmissive,
+            roughness: conf.roughness,
+            metalness: conf.metalness
+        });
+        wallMat.userData = { baseEmissive: conf.baseEmissive };
+        glassThemes[key] = {
+            materials: [wallMat, wallMat, roofMat, roofMat, wallMat, wallMat],
+            crownColor: conf.crownColor,
+            wallMat: wallMat,
+            baseEmissive: conf.baseEmissive
+        };
+    }
+
+    // Terracotta & Warm Red Brick Residential Theme
+    const terraTex = createTerracottaBrickTexture();
+    const terraEmTex = createTerracottaBrickEmissiveTexture();
+    const terraWallMat = new THREE.MeshStandardMaterial({
+        map: terraTex,
+        emissiveMap: terraEmTex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 0.20,
+        roughness: 0.78,
+        metalness: 0.08
+    });
+    terraWallMat.userData = { baseEmissive: 0.20 };
+    const terracottaTheme = {
+        materials: [terraWallMat, terraWallMat, roofMat, roofMat, terraWallMat, terraWallMat],
+        crownColor: 0xfdba74,
+        wallMat: terraWallMat,
+        baseEmissive: 0.20
+    };
+
+    // French Limestone & Travertine Classical Stone Theme
+    const limeTex = createLimestoneTexture();
+    const limeEmTex = createLimestoneEmissiveTexture();
+    const limeWallMat = new THREE.MeshStandardMaterial({
+        map: limeTex,
+        emissiveMap: limeEmTex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 0.18,
+        roughness: 0.65,
+        metalness: 0.15
+    });
+    limeWallMat.userData = { baseEmissive: 0.18 };
+    const limestoneTheme = {
+        materials: [limeWallMat, limeWallMat, roofMat, roofMat, limeWallMat, limeWallMat],
+        crownColor: 0xfef3c7,
+        wallMat: limeWallMat,
+        baseEmissive: 0.18
+    };
+
+    // Industrial Logistics & Warehouse Theme
+    const indTex = createIndustrialTexture();
+    const indWallMat = new THREE.MeshStandardMaterial({
+        map: indTex,
+        roughness: 0.65,
+        metalness: 0.40
+    });
+    const industrialMaterials = [indWallMat, indWallMat, roofMat, roofMat, indWallMat, indWallMat];
+    const industrialTheme = {
+        materials: industrialMaterials,
+        crownColor: 0x64748b,
+        wallMat: indWallMat,
+        baseEmissive: 0.10
+    };
 
     state.footprints.forEach(bldg => {
         const p = bldg.properties;
@@ -1294,11 +1675,41 @@ function buildBuildings3D() {
         const bldgGroup = new THREE.Group();
         bldgGroup.position.set(p3d.x, 0, p3d.z);
 
-        const isCommercial = (p.zoning === "commercial_high" || p.zoning === "commercial_medium");
+        const isCommercialHigh = (p.zoning === "commercial_high");
+        const isCommercialMed = (p.zoning === "commercial_medium");
         const isResidential = (p.zoning && p.zoning.startsWith("residential"));
-        const bldgMats = isCommercial ? commMaterials : (isResidential ? resMaterials : indMaterials);
 
-        const isSkyscraper = (p.height_m >= 45.0 || (p.zoning === "commercial_high" && p.height_m >= 35.0));
+        // Deterministic architectural style hashing based on building coordinates and height
+        const seed = Math.abs(Math.sin(center[0] * 12.9898 + center[1] * 78.233 + (p.height_m || 20) * 3.14159) * 43758.5453);
+        const rand = seed - Math.floor(seed);
+
+        let selectedTheme = null;
+        let isSkyscraper = false;
+
+        if (isCommercialHigh) {
+            isSkyscraper = true;
+            if (rand < 0.32) selectedTheme = glassThemes.azure_glass;
+            else if (rand < 0.54) selectedTheme = glassThemes.bronze_glass;
+            else if (rand < 0.74) selectedTheme = glassThemes.silver_tower;
+            else if (rand < 0.88) selectedTheme = glassThemes.emerald_glass;
+            else selectedTheme = glassThemes.cobalt_tower;
+        } else if (isCommercialMed) {
+            isSkyscraper = (p.height_m >= 45.0);
+            if (rand < 0.36) selectedTheme = limestoneTheme;
+            else if (rand < 0.65) selectedTheme = glassThemes.silver_tower;
+            else if (rand < 0.84) selectedTheme = glassThemes.azure_glass;
+            else selectedTheme = glassThemes.bronze_glass;
+        } else if (isResidential) {
+            isSkyscraper = (p.height_m >= 50.0);
+            if (rand < 0.45) selectedTheme = terracottaTheme;
+            else if (rand < 0.75) selectedTheme = limestoneTheme;
+            else if (rand < 0.90) selectedTheme = glassThemes.silver_tower;
+            else selectedTheme = glassThemes.bronze_glass;
+        } else {
+            selectedTheme = industrialTheme;
+        }
+
+        const bldgMats = selectedTheme.materials;
 
         if (isSkyscraper) {
             // MULTI-TIER STEPPED SETBACK SKYSCRAPER ARCHITECTURE
@@ -1318,6 +1729,23 @@ function buildBuildings3D() {
             m1.castShadow = true;
             m1.receiveShadow = true;
             bldgGroup.add(m1);
+
+            // Ground Floor Entrance Lobby Core & Canopy
+            const canopyW = Math.min(w1 * 0.45, 12.0);
+            const canopyD = 2.4;
+            const canopyH = 0.32;
+            const canopyGeom = new THREE.BoxGeometry(canopyW, canopyH, canopyD);
+            const canopyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.8 });
+            const canopy = new THREE.Mesh(canopyGeom, canopyMat);
+            canopy.position.set(0, groundY + 2.7, d1 / 2.0 + canopyD / 2.0 - 0.2);
+            bldgGroup.add(canopy);
+
+            const lobbyW = Math.min(w1 * 0.42, 11.0);
+            const lobbyH = 2.6;
+            const lobbyGeom = new THREE.BoxGeometry(lobbyW, lobbyH, 0.4);
+            const lobby = new THREE.Mesh(lobbyGeom, lobbyGlassMat);
+            lobby.position.set(0, groundY + lobbyH / 2.0, d1 / 2.0 + 0.1);
+            bldgGroup.add(lobby);
 
             // Tier 2: Main Shaft
             const g2 = new THREE.BoxGeometry(w2, h2, d2);
@@ -1340,25 +1768,75 @@ function buildBuildings3D() {
             const roofTopY = groundY + bh;
 
             // Rooftop Parapet Border Wall
-            const parapetH = 0.55;
+            const parapetH = 0.60;
             const parapetGeom = new THREE.BoxGeometry(w3 * 0.98, parapetH, d3 * 0.98);
             const parapetMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
             const parapet = new THREE.Mesh(parapetGeom, parapetMat);
             parapet.position.y = roofTopY + parapetH / 2.0;
             bldgGroup.add(parapet);
 
-            // Rooftop HVAC Chiller Unit
-            const hvacW = Math.max(1.8, w3 * 0.28);
-            const hvacD = Math.max(1.8, d3 * 0.28);
-            const hvacGeom = new THREE.BoxGeometry(hvacW, 1.3, hvacD);
-            const hvacMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.3 });
-            const hvac = new THREE.Mesh(hvacGeom, hvacMat);
-            hvac.position.set(-w3 * 0.2, roofTopY + 0.65, -d3 * 0.2);
-            bldgGroup.add(hvac);
+            // Architectural Crown Accent Trim (Glows with the building's theme color)
+            const crownTrimGeom = new THREE.BoxGeometry(w3 * 0.96, 0.15, d3 * 0.96);
+            const crownTrimMat = new THREE.MeshStandardMaterial({
+                color: selectedTheme.crownColor,
+                emissive: selectedTheme.crownColor,
+                emissiveIntensity: 0.55,
+                roughness: 0.25
+            });
+            crownTrimMat.userData = { baseEmissive: 0.55 };
+            const crownTrim = new THREE.Mesh(crownTrimGeom, crownTrimMat);
+            crownTrim.position.y = roofTopY + parapetH + 0.08;
+            bldgGroup.add(crownTrim);
 
-            // Helipad on high-rises (height >= 75m)
+            // Central Elevator & Mechanical Penthouse Core Tower ("cors")
+            const coreW = Math.max(3.5, w3 * 0.44);
+            const coreD = Math.max(3.5, d3 * 0.44);
+            const coreH = Math.max(2.8, bh * 0.095);
+            const coreOffX = (rand > 0.5 ? 1 : -1) * w3 * 0.12;
+            const coreOffZ = (rand > 0.5 ? -1 : 1) * d3 * 0.12;
+
+            const coreGeom = new THREE.BoxGeometry(coreW, coreH, coreD);
+            applyBoxFaceUVs(coreGeom, coreW, coreH, coreD, 4.0, 3.0);
+            const coreMesh = new THREE.Mesh(coreGeom, coreMaterials);
+            coreMesh.position.set(coreOffX, roofTopY + coreH / 2.0, coreOffZ);
+            coreMesh.castShadow = true;
+            coreMesh.receiveShadow = true;
+            bldgGroup.add(coreMesh);
+
+            // Rooftop Machinery Overrun Cap atop Elevator Core
+            const capW = coreW * 0.55, capD = coreD * 0.55, capH = 1.2;
+            const capGeom = new THREE.BoxGeometry(capW, capH, capD);
+            const capMesh = new THREE.Mesh(capGeom, coreMaterials);
+            capMesh.position.set(coreOffX, roofTopY + coreH + capH / 2.0, coreOffZ);
+            bldgGroup.add(capMesh);
+
+            // Rooftop HVAC Chiller Bank & Dual Cooling Fans (opposite quadrant)
+            const chillerW = Math.max(2.2, w3 * 0.30);
+            const chillerD = Math.max(2.2, d3 * 0.28);
+            const chillerH = 1.4;
+            const chillerX = -coreOffX * 0.85;
+            const chillerZ = -coreOffZ * 0.85;
+
+            const chillerGeom = new THREE.BoxGeometry(chillerW, chillerH, chillerD);
+            const chillerMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.35 });
+            const chiller = new THREE.Mesh(chillerGeom, chillerMat);
+            chiller.position.set(chillerX, roofTopY + chillerH / 2.0, chillerZ);
+            bldgGroup.add(chiller);
+
+            // Dual Cylindrical Cooling Fan Cowlings atop Chiller
+            const fanGeom = new THREE.CylinderGeometry(0.55, 0.55, 0.35, 12);
+            const fanMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.25 });
+            const fan1 = new THREE.Mesh(fanGeom, fanMat);
+            fan1.position.set(chillerX - 0.7, roofTopY + chillerH + 0.18, chillerZ);
+            bldgGroup.add(fan1);
+
+            const fan2 = new THREE.Mesh(fanGeom, fanMat);
+            fan2.position.set(chillerX + 0.7, roofTopY + chillerH + 0.18, chillerZ);
+            bldgGroup.add(fan2);
+
+            // Helipad on high-rises (height >= 75m and roof space w3 >= 6.0)
             if (p.height_m >= 75.0 && w3 >= 6.0) {
-                const padRadius = Math.min(w3 * 0.42, 6.5);
+                const padRadius = Math.min(w3 * 0.40, 6.5);
                 const padGeom = new THREE.CylinderGeometry(padRadius, padRadius, 0.25, 24);
                 const padSideMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
                 const padMats = [padSideMat, helipadMat, padSideMat];
@@ -1367,26 +1845,26 @@ function buildBuildings3D() {
                 bldgGroup.add(pad);
             }
 
-            // Communications Spire & FAA Warning Beacon on top tallest towers (height >= 80m)
+            // Communications Spire & FAA Warning Beacon on tall towers (height >= 80m)
             if (p.height_m >= 80.0) {
                 const spireH = 8.0 + (p.height_m - 80.0) * 0.25;
                 const spireGeom = new THREE.CylinderGeometry(0.12, 0.45, spireH, 8);
                 const spireMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.85, roughness: 0.2 });
                 const spire = new THREE.Mesh(spireGeom, spireMat);
-                spire.position.set(w3 * 0.18, roofTopY + spireH / 2.0, d3 * 0.18);
+                spire.position.set(coreOffX, roofTopY + coreH + capH + spireH / 2.0, coreOffZ);
                 bldgGroup.add(spire);
 
                 // FAA Obstruction Red Warning Beacon Light
-                const beaconGeom = new THREE.SphereGeometry(0.38, 8, 8);
+                const beaconGeom = new THREE.SphereGeometry(0.40, 8, 8);
                 const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
                 const beacon = new THREE.Mesh(beaconGeom, beaconMat);
-                beacon.position.set(w3 * 0.18, roofTopY + spireH + 0.2, d3 * 0.18);
+                beacon.position.set(coreOffX, roofTopY + coreH + capH + spireH + 0.2, coreOffZ);
                 bldgGroup.add(beacon);
                 state.aviationBeacons.push(beacon);
             }
 
         } else if (isResidential) {
-            // RESIDENTIAL MULTI-FAMILY / APARTMENT HOUSING
+            // RESIDENTIAL MULTI-FAMILY & MID-RISE HOUSING
             const g = new THREE.BoxGeometry(bw, bh, bd);
             applyBoxFaceUVs(g, bw, bh, bd, 4.5, 3.2);
             const m = new THREE.Mesh(g, bldgMats);
@@ -1395,16 +1873,29 @@ function buildBuildings3D() {
             m.receiveShadow = true;
             bldgGroup.add(m);
 
+            // Ground-Floor Entrance Stoop Awning
+            const entryW = Math.min(bw * 0.35, 6.0);
+            const entryD = 1.8;
+            const entryGeom = new THREE.BoxGeometry(entryW, 0.25, entryD);
+            const entryMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
+            const entry = new THREE.Mesh(entryGeom, entryMat);
+            entry.position.set(0, groundY + 2.4, bd / 2.0 + entryD / 2.0 - 0.2);
+            bldgGroup.add(entry);
+
             const roofTopY = groundY + bh;
 
-            // Rooftop Stairwell / Penthouse Hatch
-            const phGeom = new THREE.BoxGeometry(bw * 0.35, 1.8, bd * 0.35);
-            const phMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
-            const ph = new THREE.Mesh(phGeom, phMat);
-            ph.position.set(bw * 0.2, roofTopY + 0.9, -bd * 0.2);
+            // Rooftop Stairwell / Elevator Core Bulkhead ("cors")
+            const phW = bw * 0.35;
+            const phD = bd * 0.35;
+            const phH = 2.4;
+            const phGeom = new THREE.BoxGeometry(phW, phH, phD);
+            applyBoxFaceUVs(phGeom, phW, phH, phD, 4.0, 3.0);
+            const ph = new THREE.Mesh(phGeom, bldgMats);
+            ph.position.set(bw * 0.2, roofTopY + phH / 2.0, -bd * 0.2);
+            ph.castShadow = true;
             bldgGroup.add(ph);
 
-            // Classic Rooftop Cylindrical Water Tank on Stilts
+            // Classic Rooftop Cylindrical Cedar Water Tank on Stilts
             const tankRadius = Math.max(0.8, Math.min(1.4, bw * 0.18));
             const tankH = 2.2;
             const tankGeom = new THREE.CylinderGeometry(tankRadius, tankRadius, tankH, 12);
@@ -1420,6 +1911,13 @@ function buildBuildings3D() {
             cap.position.set(-bw * 0.25, roofTopY + 1.2 + tankH + 0.45, bd * 0.2);
             bldgGroup.add(cap);
 
+            // Rooftop AC Compressor Units
+            const acGeom = new THREE.BoxGeometry(1.2, 0.9, 1.1);
+            const acMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.6, roughness: 0.4 });
+            const ac1 = new THREE.Mesh(acGeom, acMat);
+            ac1.position.set(-bw * 0.2, roofTopY + 0.45, -bd * 0.2);
+            bldgGroup.add(ac1);
+
         } else {
             // INDUSTRIAL WAREHOUSES & FACILITIES
             const g = new THREE.BoxGeometry(bw, bh, bd);
@@ -1433,14 +1931,23 @@ function buildBuildings3D() {
             const roofTopY = groundY + bh;
 
             // Rooftop Industrial Ventilation Monitor / Exhaust Ridge
-            const ventGeom = new THREE.BoxGeometry(bw * 0.7, 1.2, bd * 0.25);
+            const ventGeom = new THREE.BoxGeometry(bw * 0.7, 1.3, bd * 0.25);
             const ventMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.4 });
             const vent = new THREE.Mesh(ventGeom, ventMat);
-            vent.position.set(0, roofTopY + 0.6, 0);
+            vent.position.set(0, roofTopY + 0.65, 0);
             bldgGroup.add(vent);
+
+            // Loading Dock Roll-Up Doors along front base
+            const bayW = Math.min(bw * 0.35, 6.0);
+            const bayH = 3.2;
+            const bayGeom = new THREE.BoxGeometry(bayW, bayH, 0.3);
+            const bayMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 });
+            const bay = new THREE.Mesh(bayGeom, bayMat);
+            bay.position.set(0, groundY + bayH / 2.0, bd / 2.0 + 0.1);
+            bldgGroup.add(bay);
         }
 
-        bldgGroup.userData = { id: p.id, district: p.district, zoning: p.zoning, height: p.height_m, baseEmissive: 0.25 };
+        bldgGroup.userData = { id: p.id, district: p.district, zoning: p.zoning, height: p.height_m, baseEmissive: selectedTheme.baseEmissive || 0.25 };
         state.buildingsGroup.add(bldgGroup);
     });
 
