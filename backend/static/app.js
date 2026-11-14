@@ -2035,9 +2035,9 @@ function buildFacilities3D() {
         const facGroup = new THREE.Group();
         facGroup.position.set(p3d.x, gy, p3d.z);
 
-        let color = 0x00f0ff;
+        let color = 0x10b981;
         if (p.category === "hospitals") color = 0xef4444;
-        else if (p.category === "pumping_stations") color = 0x10b981;
+        else if (p.category === "pumping_stations") color = 0xf59e0b;
         else if (p.category === "ems_stations") color = 0xf59e0b;
 
         facGroup.userData = { id: p.name, category: p.category };
@@ -2138,7 +2138,6 @@ function buildFacilities3D() {
                 turb.position.set(ox, pHouseH + 0.9, 0);
                 facGroup.add(turb);
             });
-            state.pumpingBeacons.push(strobeLight);
 
         } else if (p.category === "electrical_substations") {
             // Substation Gravel Yard Slab
@@ -2728,9 +2727,9 @@ function createAmbulanceMesh() {
     group.add(barBase);
 
     const beaconGeom = new THREE.BoxGeometry(0.32, 0.14, 0.18);
-    const redBeaconMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff1111, emissiveIntensity: 2.0 });
-    const blueBeaconMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x00f0ff, emissiveIntensity: 2.0 });
-    const centerWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.5 });
+    const redBeaconMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0x991b1b, emissiveIntensity: 1.2 });
+    const blueBeaconMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, emissive: 0x1e3a8a, emissiveIntensity: 1.2 });
+    const centerWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xcccccc, emissiveIntensity: 1.0 });
 
     const leftBeacon = new THREE.Mesh(beaconGeom, redBeaconMat);
     leftBeacon.position.set(-0.34, 1.44, 0.65);
@@ -2855,9 +2854,9 @@ function createFireTruckMesh() {
 
     // 9. Quadruple High-Intensity Siren Beacons (Cab Roof & Rear Upper Corners)
     const beaconGeom = new THREE.BoxGeometry(0.34, 0.16, 0.20);
-    const redBeaconMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff1111, emissiveIntensity: 2.2 });
-    const blueBeaconMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x00f0ff, emissiveIntensity: 2.2 });
-    const centerWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffedd5, emissive: 0xffffff, emissiveIntensity: 1.8 });
+    const redBeaconMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0x991b1b, emissiveIntensity: 1.2 });
+    const blueBeaconMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, emissive: 0x1e3a8a, emissiveIntensity: 1.2 });
+    const centerWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffedd5, emissive: 0xcccccc, emissiveIntensity: 1.0 });
 
     const cabLeftBeacon = new THREE.Mesh(beaconGeom, redBeaconMat);
     cabLeftBeacon.position.set(-0.48, 1.58, 1.05);
@@ -3562,13 +3561,13 @@ function update3DFacilitiesStatus(depthGrid, snap) {
         if (obj.userData.category === "electrical_substations") {
             const isTripped = (opSubs < 3);
             if (obj.material) {
-                obj.material.color.setHex(isTripped ? 0xef4444 : 0x00f0ff);
+                obj.material.color.setHex(isTripped ? 0xef4444 : 0x10b981);
             }
             if (obj.userData.indicatorMesh && obj.userData.indicatorMesh.material) {
-                obj.userData.indicatorMesh.material.color.setHex(isTripped ? 0xef4444 : 0x00f0ff);
+                obj.userData.indicatorMesh.material.color.setHex(isTripped ? 0xef4444 : 0x10b981);
             }
             if (obj.userData.badge) {
-                obj.userData.badge.material.color.setHex(isTripped ? 0xef4444 : 0x00f0ff);
+                obj.userData.badge.material.color.setHex(isTripped ? 0xef4444 : 0x10b981);
             }
         }
     });
@@ -4366,7 +4365,7 @@ function handle3DMouseMove(e) {
         if (nearbyEmergency) {
             const badgeType = nearbyEmergency.emergencyType === "fire_truck" ? "🚒 Heavy Fire Rescue Squad" : "🚑 Trauma Life-Support Ambulance";
             const missionTxt = nearbyEmergency.missionState === "responding" ? "PRIORITY DISPATCH (Incident Response)" : "PATIENT TRANSPORT (Returning to Hospital)";
-            emergencyFleetRow = `<div class="inspector-row" style="border-top:1px dashed rgba(239,68,68,0.4); margin-top:5px; padding-top:4px;"><span style="color:#ef4444;font-weight:600">${badgeType}</span><strong style="color:#00f0ff">${missionTxt}</strong></div>`;
+            emergencyFleetRow = `<div class="inspector-row" style="border-top:1px dashed rgba(239,68,68,0.4); margin-top:5px; padding-top:4px;"><span style="color:#ef4444;font-weight:600">${badgeType}</span><strong style="color:var(--accent-primary)">${missionTxt}</strong></div>`;
         }
 
         // 2. Proximity detection for Critical Facilities (within 18 meters)
@@ -4379,7 +4378,7 @@ function handle3DMouseMove(e) {
                 if (cat === "pumping_stations") {
                     facilityRow = `<div class="inspector-row" style="border-top:1px dashed rgba(16,185,129,0.5); margin-top:5px; padding-top:4px;"><span style="color:#10b981;font-weight:700">⚡ ${name}</span><strong style="color:#10b981">Stormwater Lift Station</strong></div>`;
                 } else if (cat === "electrical_substations") {
-                    facilityRow = `<div class="inspector-row" style="border-top:1px dashed rgba(0,240,255,0.5); margin-top:5px; padding-top:4px;"><span style="color:#00f0ff;font-weight:700">🔋 ${name}</span><strong style="color:#00f0ff">Primary Substation (138kV)</strong></div>`;
+                    facilityRow = `<div class="inspector-row" style="border-top:1px dashed rgba(16,185,129,0.5); margin-top:5px; padding-top:4px;"><span style="color:#10b981;font-weight:700">🔋 ${name}</span><strong style="color:#10b981">Primary Substation (138kV)</strong></div>`;
                 } else if (cat === "hospitals") {
                     facilityRow = `<div class="inspector-row" style="border-top:1px dashed rgba(239,68,68,0.5); margin-top:5px; padding-top:4px;"><span style="color:#ef4444;font-weight:700">🏥 ${name}</span><strong style="color:#ef4444">Level-1 Regional Hospital</strong></div>`;
                 }
@@ -4390,7 +4389,7 @@ function handle3DMouseMove(e) {
         inspectorContent.innerHTML = `
             <div class="inspector-row"><span>3D Coordinates:</span><strong>(${wx}m, ${wy}m)</strong></div>
             <div class="inspector-row"><span>Ground Elevation:</span><strong>${elev.toFixed(1)} m</strong></div>
-            <div class="inspector-row"><span>Water Inundation:</span><strong style="color: ${water > 0.15 ? 'var(--danger-red)' : (water > 0.04 ? 'var(--accent-cyan)' : 'var(--text-primary)')}">${(water * 100).toFixed(1)} cm</strong></div>
+            <div class="inspector-row"><span>Water Inundation:</span><strong style="color: ${water > 0.15 ? 'var(--danger-red)' : (water > 0.04 ? 'var(--accent-primary)' : 'var(--text-primary)')}">${(water * 100).toFixed(1)} cm</strong></div>
             <div class="inspector-row"><span>Road Traffic:</span><strong style="color: ${water >= 0.15 ? 'var(--danger-red)' : 'var(--success-green)'}">${water >= 0.15 ? 'STALLED (Flooded)' : 'FLOWING (Open)'}</strong></div>
             <div class="inspector-row"><span>Emergency Route:</span><strong style="color: ${water >= 0.30 ? 'var(--danger-red)' : 'var(--success-green)'}">${water >= 0.30 ? 'IMPASSABLE' : 'PASSABLE'}</strong></div>
             ${emergencyFleetRow}
@@ -4439,8 +4438,8 @@ function updateTelemetry(snap) {
 }
 
 function updateSparklines() {
-    drawSparkline("chartFlood", state.historyFloodedArea, "#00f0ff");
-    drawSparkline("chartEms", state.historyEmsTime, "#f59e0b");
+    drawSparkline("chartFlood", state.historyFloodedArea, "#f59e0b");
+    drawSparkline("chartEms", state.historyEmsTime, "#ef4444");
 }
 
 function drawSparkline(canvasId, series, color) {
