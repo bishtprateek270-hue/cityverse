@@ -45,6 +45,11 @@ class TimelineTrajectoryCache:
             self.branches[branch_id] = []
         self.branches[branch_id].append(frame)
 
+    def get_all_frames(self, branch_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Returns all cached trajectory frames in a single batch."""
+        b = branch_id or self.active_branch
+        return self.branches.get(b, [])
+
     def get_frame(self, frame_idx: int, branch_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Retrieves a specific frame from the specified branch."""
         b = branch_id or self.active_branch

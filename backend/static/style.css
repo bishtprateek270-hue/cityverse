@@ -394,6 +394,18 @@ input[type="range"] {
     box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
 }
 
+.btn-fit {
+    background-color: rgba(0, 240, 255, 0.12) !important;
+    color: var(--accent-cyan) !important;
+    border-color: rgba(0, 240, 255, 0.4) !important;
+    font-weight: 700 !important;
+}
+
+.btn-fit:hover {
+    background-color: rgba(0, 240, 255, 0.25) !important;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+}
+
 .map-container {
     flex: 1;
     width: 100%;

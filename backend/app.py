@@ -69,6 +69,22 @@ def init_engine():
             
     root_state = CityStateManager(city=city_instance, world_model=world_model_instance)
     branch_engine = CounterfactualBranchEngine(root_state)
+    
+    # Pre-populate baseline 3-hour storm trajectory so UI loads instantly with zero wait
+    if not timeline_cache.branches.get("baseline"):
+        try:
+            timeline_cache.run_full_scenario(
+                state_mgr=root_state,
+                rainfall_mm_hr=120.0,
+                duration_hours=3.0,
+                drainage_capacity_factor=0.6,
+                pump_overrides={"PUMP-1": 1.0, "PUMP-2": 1.0},
+                engine_mode="physics",
+                branch_id="baseline",
+                step_dt_s=300.0
+            )
+        except Exception as e:
+            print(f"Notice: Baseline pre-rollout deferred: {e}")
 
 
 @app.on_event("startup")
@@ -313,6 +329,19 @@ def get_simulation_frame(step_idx: int = 0, branch_id: str = "baseline"):
     if frame is None:
         raise HTTPException(status_code=404, detail="Frame not found in timeline cache.")
     return frame
+
+
+@app.get("/api/simulation/frames_all")
+def get_all_simulation_frames(branch_id: str = "baseline"):
+    frames = timeline_cache.get_all_frames(branch_id=branch_id)
+    if not frames:
+        raise HTTPException(status_code=404, detail="No frames cached for branch.")
+    return {
+        "branch_id": branch_id,
+        "total_frames": len(frames),
+        "frames": frames,
+        "summary": timeline_cache.get_timeline_summary(branch_id)
+    }
 
 
 @app.get("/api/simulation/timeline")

@@ -135,7 +135,7 @@ async function init() {
         state.floodCanvas.height = 240;
         state.floodCtx = state.floodCanvas.getContext("2d");
 
-        // 1. Initialize Leaflet Map
+        // 1. Initialize Leaflet Map with Clean Free Tile Basemaps
         initLeafletMap();
 
         // 2. Fetch and Load Geographic Vector Layers
@@ -144,8 +144,11 @@ async function init() {
         // 3. Setup UI Event Listeners
         setupEventListeners();
 
-        // 4. Run baseline 3-hour storm scenario (120 mm/hr, 60% drainage)
-        await runScenario(false);
+        // 4. Load Pre-Computed Simulation Trajectory Instantly
+        const loaded = await loadCachedFrames();
+        if (!loaded) {
+            await runScenario(false);
+        }
 
         console.log("CityVerse initialized successfully.");
     } catch (err) {
@@ -155,7 +158,7 @@ async function init() {
 
 
 // =========================================================================
-// LEAFLET MAP & BASEMAP CONFIGURATION
+// LEAFLET MAP & CLEAN BASEMAP CONFIGURATION
 // =========================================================================
 
 function initLeafletMap() {
@@ -163,37 +166,45 @@ function initLeafletMap() {
         center: GEO_CENTER,
         zoom: 13,
         minZoom: 11,
-        maxZoom: 17,
+        maxZoom: 18,
         zoomControl: true,
         attributionControl: false
     });
 
-    // Basemap Providers
+    // Clean, Free, Watermark-Free Basemap Providers
     state.baseLayers = {
-        dark: L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-            maxZoom: 19,
-            subdomains: "abcd"
+        dark: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+            maxZoom: 16,
+            attribution: "Esri, HERE, Garmin"
         }),
         satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-            maxZoom: 19
+            maxZoom: 18,
+            attribution: "Esri, Maxar, Earthstar Geographics"
         }),
-        street: L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        street: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+            maxZoom: 18,
+            attribution: "Esri, DeLorme, NAVTEQ"
+        }),
+        osm: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
             maxZoom: 19,
-            subdomains: "abcd"
+            attribution: "© OpenStreetMap contributors"
         })
     };
 
-    // Default to Dark GIS Basemap
+    // Default to Dark Gray GIS Basemap
     state.activeBaseLayer = state.baseLayers.dark;
     state.activeBaseLayer.addTo(state.map);
 
     // Initial Empty Flood Image Overlay
     const emptyDataUrl = state.floodCanvas.toDataURL();
     state.floodOverlay = L.imageOverlay(emptyDataUrl, GEO_BOUNDS, {
-        opacity: 0.85,
+        opacity: 0.88,
         interactive: false,
         zIndex: 400
     }).addTo(state.map);
+
+    // Auto-fit city bounds so MetroVerdia fills the entire screen
+    state.map.fitBounds(GEO_BOUNDS, { padding: [25, 25] });
 
     // Add Scale Bar
     L.control.scale({ imperial: false, metric: true, position: "bottomright" }).addTo(state.map);
@@ -214,13 +225,14 @@ function setBasemap(type) {
     state.activeBaseLayer.bringToBack();
 
     // Update button states
-    ["bmDark", "bmSatellite", "bmStreet"].forEach(id => {
+    ["bmDark", "bmSatellite", "bmStreet", "bmOsm"].forEach(id => {
         const btn = document.getElementById(id);
         if (btn) btn.classList.remove("active");
     });
     if (type === "dark") document.getElementById("bmDark").classList.add("active");
     if (type === "satellite") document.getElementById("bmSatellite").classList.add("active");
     if (type === "street") document.getElementById("bmStreet").classList.add("active");
+    if (type === "osm") document.getElementById("bmOsm").classList.add("active");
 }
 
 
@@ -237,7 +249,7 @@ async function loadGeographicLayers() {
             state.riverLayer = L.geoJSON(state.riverGeo, {
                 style: {
                     color: "#0284c7",
-                    weight: 2,
+                    weight: 2.5,
                     fillColor: "#0369a1",
                     fillOpacity: 0.85
                 },
@@ -260,10 +272,10 @@ async function loadGeographicLayers() {
                     const color = feature.properties.color || "#38bdf8";
                     return {
                         color: color,
-                        weight: 1,
-                        opacity: 0.4,
+                        weight: 1.2,
+                        opacity: 0.5,
                         fillColor: color,
-                        fillOpacity: 0.12
+                        fillOpacity: 0.15
                     };
                 },
                 onEachFeature: (feature, layer) => {
@@ -288,10 +300,10 @@ async function loadGeographicLayers() {
                     if (z === "commercial_high") fill = "#0f172a";
                     else if (z === "industrial_heavy") fill = "#262626";
                     return {
-                        color: "rgba(255, 255, 255, 0.2)",
-                        weight: 0.8,
+                        color: "rgba(255, 255, 255, 0.25)",
+                        weight: 0.9,
                         fillColor: fill,
-                        fillOpacity: 0.65
+                        fillOpacity: 0.70
                     };
                 },
                 onEachFeature: (feature, layer) => {
@@ -379,21 +391,21 @@ async function loadGeographicLayers() {
 function getRoadStyle(feature, waterDepth) {
     const p = feature.properties;
     const isHighway = (p.road_class === "highway");
-    let baseWidth = isHighway ? 4.5 : (p.road_class === "arterial" ? 3.0 : 1.8);
-    let color = isHighway ? "#64748b" : "#334155";
+    let baseWidth = isHighway ? 5.5 : (p.road_class === "arterial" ? 3.8 : 2.2);
+    let color = isHighway ? "#cbd5e1" : (p.road_class === "arterial" ? "#94a3b8" : "#64748b");
 
     if (waterDepth >= 0.30) {
         // Closed emergency / impassable
         color = "#ef4444";
-        baseWidth += 2.0;
+        baseWidth += 2.5;
     } else if (waterDepth >= 0.15) {
         // Stalled passenger vehicles
         color = "#f97316";
-        baseWidth += 1.2;
+        baseWidth += 1.6;
     } else if (waterDepth >= 0.05) {
         // Speed degraded
         color = "#eab308";
-        baseWidth += 0.5;
+        baseWidth += 0.8;
     }
 
     return {
@@ -433,8 +445,36 @@ function createFacilityIcon(category, isTripped) {
 
 
 // =========================================================================
-// SCENARIO EXECUTION & TIMELINE ROLLOUT
+// FAST TRAJECTORY LOADING & SCENARIO EXECUTION
 // =========================================================================
+
+async function loadCachedFrames() {
+    try {
+        const res = await fetch(`/api/simulation/frames_all?branch_id=${state.currentBranch}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.frames && data.frames.length > 0) {
+                state.frames = data.frames;
+                state.totalSteps = state.frames.length - 1;
+                elTimelineScrubber.max = state.totalSteps;
+
+                if (data.summary) {
+                    state.historyFloodedArea = data.summary.flooded_area_km2_series;
+                    state.historyEmsTime = data.summary.ems_time_min_series;
+                    updateSparklines();
+                }
+
+                // Immediately scrub to storm peak (T+02:00 or T+03:00) so user sees realistic flooding!
+                const previewStep = Math.min(24, state.totalSteps);
+                scrubToStep(previewStep);
+                return true;
+            }
+        }
+    } catch (e) {
+        console.warn("Fast frame loading notice:", e);
+    }
+    return false;
+}
 
 async function runScenario(autoPlay = true) {
     const rainfall = parseFloat(sliderRain.value);
@@ -445,7 +485,7 @@ async function runScenario(autoPlay = true) {
 
     try {
         elRunScenario.disabled = true;
-        document.getElementById("runScenarioLabel").innerText = "SIMULATING...";
+        document.getElementById("runScenarioLabel").innerText = "SIMULATING (2D Physics)...";
 
         const payload = {
             rainfall_mm_hr: rainfall,
@@ -468,14 +508,11 @@ async function runScenario(autoPlay = true) {
         elTimelineScrubber.max = state.totalSteps;
         elTimelineTotalLabel.innerText = `T+${formatHoursMinutes(duration * 3600)}`;
 
-        // Fetch all frames into local trajectory cache
-        state.frames = [];
-        for (let s = 0; s <= state.totalSteps; s++) {
-            const fRes = await fetch(`/api/simulation/frame?step_idx=${s}&branch_id=${state.currentBranch}`);
-            if (fRes.ok) {
-                const frame = await fRes.json();
-                state.frames.push(frame);
-            }
+        // Fetch all frames in ONE fast batch request
+        const fRes = await fetch(`/api/simulation/frames_all?branch_id=${state.currentBranch}`);
+        if (fRes.ok) {
+            const data = await fRes.json();
+            state.frames = data.frames;
         }
 
         // Update sparkline series
@@ -483,9 +520,8 @@ async function runScenario(autoPlay = true) {
         state.historyEmsTime = summary.ems_time_min_series;
         updateSparklines();
 
-        // Scrub to initial frame or start playback
+        // Start playback from T+00:00 to T+03:00
         scrubToStep(0);
-
         if (autoPlay) {
             startPlayback();
         }
@@ -723,6 +759,10 @@ function setupEventListeners() {
     document.getElementById("bmDark").addEventListener("click", () => setBasemap("dark"));
     document.getElementById("bmSatellite").addEventListener("click", () => setBasemap("satellite"));
     document.getElementById("bmStreet").addEventListener("click", () => setBasemap("street"));
+    document.getElementById("bmOsm").addEventListener("click", () => setBasemap("osm"));
+    document.getElementById("btnFitCity").addEventListener("click", () => {
+        state.map.fitBounds(GEO_BOUNDS, { padding: [25, 25] });
+    });
 
     // Sliders
     sliderRain.addEventListener("input", (e) => { valRain.innerText = `${e.target.value} mm/hr`; });
