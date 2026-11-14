@@ -61,12 +61,6 @@ const state = {
     vehicles: [],
     roadGraph: {}, // edge_id -> { p1, p2, length, class, connections }
 
-    // Interactive 3D Interventions (Sandbag Berms, Pump Overrides & Countermeasures)
-    sandbagsGroup: null,
-    sandbagBerms: new Map(), // streetKey -> { mesh, edge, u, v }
-    activeInterveneTool: null, // "sandbag" | "boost_pumps" | null
-    isDragging: false,
-
     // Camera Modes
     isDroneOrbit: false,
     orbitAngle: 0.0,
@@ -1151,11 +1145,7 @@ function build3DCityScene() {
     // 6. Dynamic Storm Rain Particle FX
     buildRainWeatherFX();
 
-    // 7. Interactive Sandbag Berms Group
-    state.sandbagsGroup = new THREE.Group();
-    state.scene.add(state.sandbagsGroup);
-
-    // 8. 3D Street Furniture & LED Streetlights
+    // 7. 3D Street Furniture & LED Streetlights
     buildStreetFurniture3D();
 }
 
@@ -3137,7 +3127,7 @@ function updateTraffic(dt) {
             }
         } else {
             // Specialized Emergency Vehicles (Ambulances & Heavy Fire Engines)
-            const isRoadBlocked = edge.isClosed || edge.hasSandbag || (water >= 0.15);
+            const isRoadBlocked = edge.isClosed || (water >= 0.15);
 
             if (isRoadBlocked) {
                 // Obey red/blocked roads: execute immediate tactical U-turn detour away from flood barrier
@@ -3148,7 +3138,7 @@ function updateTraffic(dt) {
                     const returnEdgeId = state.reciprocalEdges[veh.edgeId];
                     const returnEdge = returnEdgeId ? state.roadGraph[returnEdgeId] : null;
 
-                    if (returnEdge && !returnEdge.isClosed && !returnEdge.hasSandbag && (returnEdge.waterDepth || 0.0) < 0.15) {
+                    if (returnEdge && !returnEdge.isClosed && (returnEdge.waterDepth || 0.0) < 0.15) {
                         veh.edgeId = returnEdge.id;
                         veh.t = npClamp(1.0 - veh.t, 0.05, 0.95);
                         veh.currentSpeed = veh.baseSpeed * 0.70;
@@ -3223,7 +3213,6 @@ function updateTraffic(dt) {
                     e.u === hitNode && 
                     e.id !== oppEdgeId && 
                     !e.isClosed && 
-                    !e.hasSandbag && 
                     (e.waterDepth || 0.0) < 0.15
                 );
 
@@ -3279,7 +3268,7 @@ function updateTraffic(dt) {
                 } else {
                     const returnEdgeId = state.reciprocalEdges[edge.id];
                     const returnEdge = returnEdgeId ? state.roadGraph[returnEdgeId] : null;
-                    if (returnEdge && !returnEdge.isClosed && !returnEdge.hasSandbag && (returnEdge.waterDepth || 0.0) < 0.15) {
+                    if (returnEdge && !returnEdge.isClosed && (returnEdge.waterDepth || 0.0) < 0.15) {
                         veh.edgeId = returnEdge.id;
                         veh.t = 0.05;
                         veh.currentSpeed = veh.baseSpeed * 0.65;
@@ -3435,21 +3424,13 @@ async function runScenario(autoPlay = true, scrubToPeak = false) {
         const modeLabel = (state.engineMode === "world_model") ? "Neural World Model (2ms)" : "Coupled 2D Physics";
         document.getElementById("runScenarioLabel").innerText = `SIMULATING (${modeLabel})...`;
 
-        const sandbagPairs = [];
-        if (state.sandbagBerms) {
-            state.sandbagBerms.forEach(item => {
-                sandbagPairs.push([item.u, item.v]);
-            });
-        }
-
         const payload = {
             rainfall_mm_hr: rainfall,
             duration_hours: duration,
             drainage_capacity_factor: drainage,
             pump_overrides: { "PUMP-1": p1, "PUMP-2": p2 },
             engine_mode: state.engineMode,
-            branch_id: state.currentBranch,
-            sandbag_edges: sandbagPairs
+            branch_id: state.currentBranch
         };
 
         const res = await fetch("/api/simulation/run_scenario", {
@@ -3993,22 +3974,6 @@ function animate() {
         });
     }
 
-    // 8. Flash Warning Beacons on Deployed Sandbag Barriers
-    if (state.sandbagsGroup && state.sandbagsGroup.children.length > 0) {
-        const amberBlink = Math.floor(Date.now() / 180) % 2 === 0;
-        state.sandbagsGroup.children.forEach(berm => {
-            if (berm.userData && berm.userData.beacons) {
-                const intVal = amberBlink ? 3.0 : 0.3;
-                berm.userData.beacons.forEach(b => {
-                    b.material.emissiveIntensity = intVal;
-                });
-                if (berm.userData.bermLight) {
-                    berm.userData.bermLight.intensity = amberBlink ? 1.4 : 0.2;
-                }
-            }
-        });
-    }
-
     state.controls.update();
     state.renderer.render(state.scene, state.camera);
 }
@@ -4170,60 +4135,6 @@ function setupEventListeners() {
         isMouseDown = false;
         inspectorCard.classList.add("hidden");
     });
-
-    // Intervention Tool Buttons
-    const btnSandbag = document.getElementById("btnToolSandbag");
-    const btnPumps = document.getElementById("btnToolBoostPumps");
-    const btnClear = document.getElementById("btnClearInterventions");
-
-    if (btnSandbag) {
-        btnSandbag.addEventListener("click", () => {
-            if (state.activeInterveneTool === "sandbag") {
-                state.activeInterveneTool = null;
-                btnSandbag.classList.remove("active-sandbag");
-                container.classList.remove("intervene-cursor");
-                showInterventionToast("ℹ️", "Sandbag placement tool deactivated.");
-            } else {
-                state.activeInterveneTool = "sandbag";
-                btnSandbag.classList.add("active-sandbag");
-                container.classList.add("intervene-cursor");
-                showInterventionToast("🚧", "Sandbag tool active! Click any road in 3D to deploy barriers.");
-            }
-        });
-    }
-
-    if (btnPumps) {
-        btnPumps.addEventListener("click", () => {
-            // Toggle global Turbo Pump Boost
-            const isCurrentlyBoosted = (parseFloat(sliderPump1.value) > 100.0);
-            const targetVal = isCurrentlyBoosted ? 100.0 : 150.0;
-            sliderPump1.value = targetVal;
-            valPump1.innerText = `${Math.round(targetVal)}%`;
-            sliderPump2.value = targetVal;
-            valPump2.innerText = `${Math.round(targetVal)}%`;
-
-            if (!isCurrentlyBoosted) {
-                btnPumps.classList.add("active-pump");
-                showInterventionToast("⚡", "ALL PUMPS TURBO-BOOSTED (15.0 m³/s): Rapid flood drawdown active!");
-                if (state.facilitiesGroup) {
-                    state.facilitiesGroup.children.forEach(f => {
-                        if (f.userData && f.userData.category === "pumping_stations") {
-                            spawnInterventionShockwave(f.position, 0x10b981);
-                        }
-                    });
-                }
-            } else {
-                btnPumps.classList.remove("active-pump");
-                showInterventionToast("🔄", "Pumps reset to rated capacity (100%).");
-            }
-            updateClearButtonVisibility();
-            debounceAutoRollout(150);
-        });
-    }
-
-    if (btnClear) {
-        btnClear.addEventListener("click", clearAllInterventions);
-    }
 }
 
 function setupLayerToggle(id, layerGetter) {
@@ -4357,249 +4268,6 @@ function spawnInterventionShockwave(position, colorHex = 0x10b981) {
     }, 25);
 }
 
-function updateClearButtonVisibility() {
-    const btnClear = document.getElementById("btnClearInterventions");
-    if (!btnClear) return;
-    const count = (state.sandbagBerms ? state.sandbagBerms.size : 0);
-    const p1Boost = parseFloat(sliderPump1.value) > 100.0;
-    const p2Boost = parseFloat(sliderPump2.value) > 100.0;
-
-    if (count > 0 || p1Boost || p2Boost) {
-        btnClear.style.display = "inline-block";
-        btnClear.innerText = `🧹 Clear (${count + (p1Boost ? 1 : 0) + (p2Boost ? 1 : 0)})`;
-    } else {
-        btnClear.style.display = "none";
-    }
-}
-
-function createSandbagBermMesh(edge) {
-    const group = new THREE.Group();
-
-    const start = edge.start;
-    const end = edge.end;
-    const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-    const forward = new THREE.Vector3().subVectors(end, start).normalize();
-
-    const roadWidth = edge.width + 1.4;
-
-    // 1. Lower Layer of Canvas Burlap Sandbags
-    const bagMat = new THREE.MeshStandardMaterial({
-        color: 0x92400e, // Warm earthen burlap tone
-        roughness: 0.92,
-        metalness: 0.08
-    });
-
-    const lowerGeom = new THREE.BoxGeometry(roadWidth, 0.44, 0.72);
-    const lowerBerm = new THREE.Mesh(lowerGeom, bagMat);
-    lowerBerm.position.y = 0.22;
-    lowerBerm.castShadow = true;
-    group.add(lowerBerm);
-
-    // 2. Upper Layer of Sandbags (nested on top for pyramid interlocking berm profile)
-    const upperGeom = new THREE.BoxGeometry(roadWidth * 0.92, 0.40, 0.54);
-    const upperBerm = new THREE.Mesh(upperGeom, bagMat);
-    upperBerm.position.y = 0.58;
-    upperBerm.castShadow = true;
-    group.add(upperBerm);
-
-    // 3. High-Visibility Caution Hazard Crest Tape (Black and Amber Chevron)
-    const tapeGeom = new THREE.BoxGeometry(roadWidth * 0.94, 0.08, 0.56);
-    const tapeMat = new THREE.MeshStandardMaterial({
-        color: 0xf59e0b,
-        emissive: 0x78350f,
-        emissiveIntensity: 0.4,
-        roughness: 0.3
-    });
-    const tape = new THREE.Mesh(tapeGeom, tapeMat);
-    tape.position.y = 0.80;
-    group.add(tape);
-
-    // 4. Strobe Warning Hazard Beacons on Left & Right Flanks
-    const beaconGeom = new THREE.CylinderGeometry(0.12, 0.14, 0.22, 8);
-    const amberBeaconMat = new THREE.MeshStandardMaterial({
-        color: 0xf59e0b,
-        emissive: 0xffb703,
-        emissiveIntensity: 2.5
-    });
-
-    const leftBeacon = new THREE.Mesh(beaconGeom, amberBeaconMat);
-    leftBeacon.position.set(-roadWidth * 0.44, 0.90, 0);
-    const rightBeacon = new THREE.Mesh(beaconGeom, amberBeaconMat.clone());
-    rightBeacon.position.set(roadWidth * 0.44, 0.90, 0);
-    group.add(leftBeacon);
-    group.add(rightBeacon);
-
-    // 5. Dynamic Local Amber Strobe PointLight
-    const bermLight = new THREE.PointLight(0xf59e0b, 1.2, 9, 2.0);
-    bermLight.position.set(0, 1.2, 0);
-    group.add(bermLight);
-
-    // Position and Orient group across the road
-    group.position.copy(mid);
-    const lookTarget = mid.clone().add(forward);
-    group.lookAt(lookTarget);
-
-    group.userData = {
-        isSandbagBerm: true,
-        streetKey: edge.streetKey,
-        edge: edge,
-        beacons: [leftBeacon, rightBeacon],
-        bermLight: bermLight
-    };
-
-    return group;
-}
-
-function handleRoadIntervention(streetKey) {
-    if (state.sandbagBerms.has(streetKey)) {
-        removeSandbagBerm(streetKey);
-    } else {
-        deploySandbagBerm(streetKey);
-    }
-}
-
-function deploySandbagBerm(streetKey) {
-    const candidateEdge = Object.values(state.roadGraph).find(e => e.streetKey === streetKey);
-    if (!candidateEdge) return;
-
-    const bermMesh = createSandbagBermMesh(candidateEdge);
-    state.sandbagsGroup.add(bermMesh);
-
-    state.sandbagBerms.set(streetKey, {
-        mesh: bermMesh,
-        edge: candidateEdge,
-        u: candidateEdge.u,
-        v: candidateEdge.v
-    });
-
-    candidateEdge.hasSandbag = true;
-    const oppId = state.reciprocalEdges[candidateEdge.id];
-    if (oppId && state.roadGraph[oppId]) {
-        state.roadGraph[oppId].hasSandbag = true;
-    }
-
-    updateClearButtonVisibility();
-    showInterventionToast("🚧", `Sandbag Barrier Deployed on ${streetKey} (+0.85m Defense)! Rerolling hydrodynamics...`);
-    spawnInterventionShockwave(candidateEdge.start.clone().add(candidateEdge.end).multiplyScalar(0.5), 0xf59e0b);
-
-    if (sliderDebounceTimer) clearTimeout(sliderDebounceTimer);
-    sliderDebounceTimer = setTimeout(() => {
-        runScenario(false, true);
-    }, 180);
-}
-
-function removeSandbagBerm(streetKey) {
-    if (!state.sandbagBerms.has(streetKey)) return;
-    const item = state.sandbagBerms.get(streetKey);
-    state.sandbagsGroup.remove(item.mesh);
-    state.sandbagBerms.delete(streetKey);
-
-    item.edge.hasSandbag = false;
-    const oppId = state.reciprocalEdges[item.edge.id];
-    if (oppId && state.roadGraph[oppId]) {
-        state.roadGraph[oppId].hasSandbag = false;
-    }
-
-    updateClearButtonVisibility();
-    showInterventionToast("🧹", `Sandbag Barrier Removed from ${streetKey}. Recalculating runoff...`);
-
-    if (sliderDebounceTimer) clearTimeout(sliderDebounceTimer);
-    sliderDebounceTimer = setTimeout(() => {
-        runScenario(false, true);
-    }, 180);
-}
-
-function handleFacilityIntervention(hitFac) {
-    const cat = hitFac.userData.category;
-    const facId = hitFac.userData.id;
-    const pos = hitFac.position;
-
-    if (cat === "pumping_stations") {
-        // Toggle Pump Turbo Throttle (100% -> 150% Turbo Boost)
-        const isPump1 = facId.includes("1") || facId.toLowerCase().includes("south");
-        const slider = isPump1 ? sliderPump1 : sliderPump2;
-        const valEl = isPump1 ? valPump1 : valPump2;
-
-        const currentVal = parseFloat(slider.value);
-        let newVal;
-        if (currentVal <= 100.0) {
-            newVal = 150.0;
-            showInterventionToast("⚡", `${facId}: TURBO-BOOST (15.0 m³/s) Activated! Drainage enhanced.`);
-            spawnInterventionShockwave(pos, 0x10b981);
-        } else {
-            newVal = 100.0;
-            showInterventionToast("🔄", `${facId}: Reset to Standard Operational Throttle (10.0 m³/s).`);
-            spawnInterventionShockwave(pos, 0x00f0ff);
-        }
-
-        slider.value = newVal;
-        valEl.innerText = `${Math.round(newVal)}%`;
-        updateClearButtonVisibility();
-
-        if (sliderDebounceTimer) clearTimeout(sliderDebounceTimer);
-        sliderDebounceTimer = setTimeout(() => {
-            runScenario(false, true);
-        }, 180);
-
-    } else if (cat === "electrical_substations") {
-        showInterventionToast("🔋", `${facId}: Auxiliary Generator Hardening Deployed (Immune to Flood Trip)!`);
-        spawnInterventionShockwave(pos, 0x00f0ff);
-
-    } else if (cat === "hospitals") {
-        showInterventionToast("🚑", `${facId}: Emergency Surge Activated — 4 Extra Ambulances Dispatched!`);
-        spawnInterventionShockwave(pos, 0xef4444);
-        for (let k = 0; k < 4; k++) {
-            const amb = createAmbulanceMesh();
-            state.trafficGroup.add(amb);
-            const edge = Object.values(state.roadGraph).find(e => e.u === "INT-0025" || e.v === "INT-0025") || Object.values(state.roadGraph)[0];
-            state.vehicles.push({
-                id: state.vehicles.length,
-                mesh: amb,
-                edgeId: edge.id,
-                t: 0.1 + k * 0.2,
-                baseSpeed: 23.0,
-                currentSpeed: 23.0,
-                isEmergency: true,
-                emergencyType: "ambulance",
-                waterClearance: 0.32,
-                homeHospitalNode: "INT-0025",
-                missionState: "responding",
-                missionTimer: 35.0,
-                isStalled: false,
-                waitingTimer: 0
-            });
-        }
-    }
-}
-
-function clearAllInterventions() {
-    state.sandbagBerms.forEach(item => {
-        state.sandbagsGroup.remove(item.mesh);
-        item.edge.hasSandbag = false;
-        const oppId = state.reciprocalEdges[item.edge.id];
-        if (oppId && state.roadGraph[oppId]) {
-            state.roadGraph[oppId].hasSandbag = false;
-        }
-    });
-    state.sandbagBerms.clear();
-
-    sliderPump1.value = 100;
-    valPump1.innerText = "100%";
-    sliderPump2.value = 100;
-    valPump2.innerText = "100%";
-
-    const btnPumps = document.getElementById("btnToolBoostPumps");
-    if (btnPumps) btnPumps.classList.remove("active-pump");
-
-    updateClearButtonVisibility();
-    showInterventionToast("🧹", "All sandbag barriers and pump overrides reset to baseline.");
-
-    if (sliderDebounceTimer) clearTimeout(sliderDebounceTimer);
-    sliderDebounceTimer = setTimeout(() => {
-        runScenario(false, true);
-    }, 180);
-}
-
 function handle3DClick(e) {
     if (!state.renderer || !state.camera) return;
     const rect = state.renderer.domElement.getBoundingClientRect();
@@ -4608,34 +4276,7 @@ function handle3DClick(e) {
 
     raycaster.setFromCamera(mouseVec, state.camera);
 
-    // Get 3D hit point on terrain plane for proximity snapping
-    const terrainHits = state.terrainMesh ? raycaster.intersectObject(state.terrainMesh) : [];
-    const hitPt = terrainHits.length > 0 ? terrainHits[0].point : null;
-
-    // 1. Check if user clicked an existing Sandbag Berm (or clicked within 12m of one)
-    if (state.sandbagsGroup && state.sandbagsGroup.children.length > 0) {
-        const bermIntersects = raycaster.intersectObjects(state.sandbagsGroup.children, true);
-        if (bermIntersects.length > 0) {
-            let hitBerm = bermIntersects[0].object;
-            while (hitBerm && (!hitBerm.userData || !hitBerm.userData.isSandbagBerm) && hitBerm.parent) {
-                hitBerm = hitBerm.parent;
-            }
-            if (hitBerm && hitBerm.userData && hitBerm.userData.isSandbagBerm) {
-                const sKey = hitBerm.userData.streetKey;
-                removeSandbagBerm(sKey);
-                return;
-            }
-        }
-        if (hitPt) {
-            const nearBerm = state.sandbagsGroup.children.find(b => b.position.distanceTo(hitPt) < 12.0);
-            if (nearBerm && nearBerm.userData && nearBerm.userData.streetKey) {
-                removeSandbagBerm(nearBerm.userData.streetKey);
-                return;
-            }
-        }
-    }
-
-    // 2. Check if user clicked a Critical Facility (Pump Station, Substation, Hospital)
+    // Check if user clicked a Critical Facility to focus camera
     if (state.facilitiesGroup && state.facilitiesGroup.children.length > 0) {
         const facIntersects = raycaster.intersectObjects(state.facilitiesGroup.children, true);
         if (facIntersects.length > 0) {
@@ -4644,58 +4285,19 @@ function handle3DClick(e) {
                 hitFac = hitFac.parent;
             }
             if (hitFac && hitFac.userData && hitFac.userData.category) {
-                handleFacilityIntervention(hitFac);
+                const targetPos = hitFac.position.clone();
+                state.controls.target.copy(targetPos);
+                state.camera.position.set(targetPos.x + 35, targetPos.y + 45, targetPos.z + 55);
+                state.controls.update();
                 return;
             }
         }
-        if (hitPt) {
-            const nearFac = state.facilitiesGroup.children.find(f => f.userData && f.userData.category && f.position.distanceTo(hitPt) < 22.0);
-            if (nearFac) {
-                handleFacilityIntervention(nearFac);
-                return;
-            }
-        }
-    }
-
-    // 3. Check if user clicked a Road to deploy sandbags (direct road mesh OR nearest road to click point)
-    let targetStreetKey = null;
-    if (state.roadLinesGroup && state.roadLinesGroup.children.length > 0) {
-        const roadIntersects = raycaster.intersectObjects(state.roadLinesGroup.children, true);
-        if (roadIntersects.length > 0) {
-            let hitRoad = roadIntersects[0].object;
-            while (hitRoad && (!hitRoad.userData || !hitRoad.userData.streetKey) && hitRoad.parent) {
-                hitRoad = hitRoad.parent;
-            }
-            if (hitRoad && hitRoad.userData && hitRoad.userData.streetKey) {
-                targetStreetKey = hitRoad.userData.streetKey;
-            }
-        }
-    }
-
-    if (!targetStreetKey && hitPt && state.roadGraph) {
-        let bestDist = 18.0; // 18-meter proximity snap for easy road clicking
-        Object.values(state.roadGraph).forEach(edge => {
-            const d = distToSegment(hitPt, edge.start, edge.end);
-            if (d < bestDist) {
-                bestDist = d;
-                targetStreetKey = edge.streetKey;
-            }
-        });
-    }
-
-    if (targetStreetKey) {
-        handleRoadIntervention(targetStreetKey);
-        return;
     }
 }
 
 async function handleForkScenario() {
     const branchName = `intervention_branch_B`;
     try {
-        const sandbagPairs = [];
-        state.sandbagBerms.forEach(item => {
-            sandbagPairs.push([item.u, item.v]);
-        });
         const p1 = parseFloat(sliderPump1.value) / 100.0;
         const p2 = parseFloat(sliderPump2.value) / 100.0;
 
@@ -4719,9 +4321,7 @@ async function handleForkScenario() {
             btnCompare.disabled = false;
             btnFork.innerText = "RE-FORK BRANCH B";
 
-            showInterventionToast("🔀", `Forked timeline '${branchName}' with ${sandbagPairs.length} sandbag barriers & pump boosts.`);
-
-            // Re-roll scenario for Branch B with all active interventions!
+            // Re-roll scenario for Branch B with modified controls!
             await runScenario(false, true);
         }
     } catch (err) {
@@ -4756,10 +4356,10 @@ async function handleCompareBranches() {
 
         const recBadge = document.getElementById("diffRecommendation");
         if (diff.is_branch_b_better) {
-            recBadge.innerText = "COUNTERMEASURE RECOMMENDED: Sandbag barriers & turbo pumping reduced flood inundation and preserved emergency trauma routes!";
+            recBadge.innerText = "COUNTERMEASURE RECOMMENDED: Municipal drainage upgrades & pump station operations reduced flood inundation and preserved emergency trauma routes!";
             recBadge.className = "diff-badge badge-success";
         } else {
-            recBadge.innerText = "NEGLIGIBLE IMPACT: Intervention insufficient to arrest basin inundation.";
+            recBadge.innerText = "NEGLIGIBLE IMPACT: Municipal controls insufficient to arrest basin inundation.";
             recBadge.className = "diff-badge badge-warning";
         }
     } catch (err) {
@@ -4809,35 +4409,21 @@ function handle3DMouseMove(e) {
             emergencyFleetRow = `<div class="inspector-row" style="border-top:1px dashed rgba(239,68,68,0.4); margin-top:5px; padding-top:4px;"><span style="color:#ef4444;font-weight:600">${badgeType}</span><strong style="color:#00f0ff">${missionTxt}</strong></div>`;
         }
 
-        // 2. Proximity detection for Sandbag Berms (within 10 meters)
-        let sandbagRow = "";
-        if (state.sandbagsGroup && state.sandbagsGroup.children.length > 0) {
-            const nearBerm = state.sandbagsGroup.children.find(b => b.position.distanceTo(pt) < 10.0);
-            if (nearBerm) {
-                sandbagRow = `<div class="inspector-row" style="border-top:1px dashed rgba(245,158,11,0.5); margin-top:5px; padding-top:4px;"><span style="color:#f59e0b;font-weight:700">🚧 ACTIVE SANDBAG BERM</span><strong style="color:#f59e0b">Click to Remove</strong></div>`;
-            }
-        }
-
-        // 3. Proximity detection for Critical Facilities (within 18 meters)
-        let facilityInterveneRow = "";
+        // 2. Proximity detection for Critical Facilities (within 18 meters)
+        let facilityRow = "";
         if (state.facilitiesGroup && state.facilitiesGroup.children.length > 0) {
             const nearFac = state.facilitiesGroup.children.find(f => f.userData && f.userData.category && f.position.distanceTo(pt) < 18.0);
             if (nearFac) {
                 const cat = nearFac.userData.category;
                 const name = nearFac.userData.id;
                 if (cat === "pumping_stations") {
-                    facilityInterveneRow = `<div class="inspector-row" style="border-top:1px dashed rgba(16,185,129,0.5); margin-top:5px; padding-top:4px;"><span style="color:#10b981;font-weight:700">⚡ ${name}</span><strong style="color:#10b981">Click to Turbo-Boost (15 m³/s)</strong></div>`;
+                    facilityRow = `<div class="inspector-row" style="border-top:1px dashed rgba(16,185,129,0.5); margin-top:5px; padding-top:4px;"><span style="color:#10b981;font-weight:700">⚡ ${name}</span><strong style="color:#10b981">Stormwater Lift Station</strong></div>`;
                 } else if (cat === "electrical_substations") {
-                    facilityInterveneRow = `<div class="inspector-row" style="border-top:1px dashed rgba(0,240,255,0.5); margin-top:5px; padding-top:4px;"><span style="color:#00f0ff;font-weight:700">🔋 ${name}</span><strong style="color:#00f0ff">Click to Deploy Backup Gen</strong></div>`;
+                    facilityRow = `<div class="inspector-row" style="border-top:1px dashed rgba(0,240,255,0.5); margin-top:5px; padding-top:4px;"><span style="color:#00f0ff;font-weight:700">🔋 ${name}</span><strong style="color:#00f0ff">Primary Substation (138kV)</strong></div>`;
                 } else if (cat === "hospitals") {
-                    facilityInterveneRow = `<div class="inspector-row" style="border-top:1px dashed rgba(239,68,68,0.5); margin-top:5px; padding-top:4px;"><span style="color:#ef4444;font-weight:700">🏥 ${name}</span><strong style="color:#ef4444">Click for Ambulance Surge</strong></div>`;
+                    facilityRow = `<div class="inspector-row" style="border-top:1px dashed rgba(239,68,68,0.5); margin-top:5px; padding-top:4px;"><span style="color:#ef4444;font-weight:700">🏥 ${name}</span><strong style="color:#ef4444">Level-1 Regional Hospital</strong></div>`;
                 }
             }
-        }
-
-        let roadInterveneRow = "";
-        if (!sandbagRow && !facilityInterveneRow) {
-            roadInterveneRow = `<div class="inspector-row" style="color:#94a3b8;font-size:10px;margin-top:4px;border-top:1px dotted rgba(255,255,255,0.15);padding-top:3px;"><span>💡 Action:</span><em style="color:#f59e0b">Click road to deploy sandbags</em></div>`;
         }
 
         inspectorCard.classList.remove("hidden");
@@ -4848,9 +4434,7 @@ function handle3DMouseMove(e) {
             <div class="inspector-row"><span>Road Traffic:</span><strong style="color: ${water >= 0.15 ? 'var(--danger-red)' : 'var(--success-green)'}">${water >= 0.15 ? 'STALLED (Flooded)' : 'FLOWING (Open)'}</strong></div>
             <div class="inspector-row"><span>Emergency Route:</span><strong style="color: ${water >= 0.30 ? 'var(--danger-red)' : 'var(--success-green)'}">${water >= 0.30 ? 'IMPASSABLE' : 'PASSABLE'}</strong></div>
             ${emergencyFleetRow}
-            ${sandbagRow}
-            ${facilityInterveneRow}
-            ${roadInterveneRow}
+            ${facilityRow}
         `;
     } else {
         inspectorCard.classList.add("hidden");
