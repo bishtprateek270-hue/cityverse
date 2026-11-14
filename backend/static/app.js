@@ -36,6 +36,14 @@ const state = {
     hemiLight: null,
     flashLight: null,
 
+    // Dynamic Atmospheric SkyDome, Sun Disc & Aviation Beacons
+    skyDome: null,
+    skyCanvas: null,
+    skyCanvasTex: null,
+    sunMesh: null,
+    aviationBeacons: [],
+    rainData: [],
+
     // Environmental Atmospheric Weather & Lighting System
     weatherMode: "auto", // "auto", "day", "night"
     currentWeatherFactor: 0.5, // 0.0 (Clear Sun) to 1.0 (Severe Tempest)
@@ -173,6 +181,413 @@ async function init() {
 
 
 // =========================================================================
+// PROCEDURAL ARCHITECTURAL FACADE & ATMOSPHERIC TEXTURES
+// =========================================================================
+
+function interpolateHexColor(hex1, hex2, t) {
+    const r1 = parseInt(hex1.slice(1, 3), 16), g1 = parseInt(hex1.slice(3, 5), 16), b1 = parseInt(hex1.slice(5, 7), 16);
+    const r2 = parseInt(hex2.slice(1, 3), 16), g2 = parseInt(hex2.slice(3, 5), 16), b2 = parseInt(hex2.slice(5, 7), 16);
+    const r = Math.round(r1 + (r2 - r1) * t);
+    const g = Math.round(g1 + (g2 - g1) * t);
+    const b = Math.round(b1 + (b2 - b1) * t);
+    return `rgb(${r},${g},${b})`;
+}
+
+function createCommercialGlassTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#0a0f1d";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const floors = 16;
+    const bays = 16;
+    const bayW = 512 / bays;
+    const floorH = 512 / floors;
+
+    for (let f = 0; f < floors; f++) {
+        const y = f * floorH;
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(0, y, 512, 5);
+
+        for (let b = 0; b < bays; b++) {
+            const x = b * bayW;
+            ctx.fillStyle = "#0f172a";
+            ctx.fillRect(x, y + 5, 3, floorH - 5);
+
+            const winX = x + 3;
+            const winY = y + 5;
+            const winW = bayW - 4;
+            const winH = floorH - 6;
+
+            const hash = Math.sin(f * 29.3 + b * 71.9) * 10000;
+            const rand = hash - Math.floor(hash);
+
+            if (rand > 0.58) {
+                const grad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+                if (rand > 0.88) {
+                    grad.addColorStop(0, "#fef08a");
+                    grad.addColorStop(1, "#f59e0b");
+                } else if (rand > 0.74) {
+                    grad.addColorStop(0, "#e0f2fe");
+                    grad.addColorStop(1, "#93c5fd");
+                } else {
+                    grad.addColorStop(0, "#fed7aa");
+                    grad.addColorStop(1, "#fb923c");
+                }
+                ctx.fillStyle = grad;
+            } else {
+                const grad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+                grad.addColorStop(0, "#1e3a5f");
+                grad.addColorStop(1, "#0a192f");
+                ctx.fillStyle = grad;
+            }
+            ctx.fillRect(winX, winY, winW, winH);
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createCommercialEmissiveTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const floors = 16;
+    const bays = 16;
+    const bayW = 512 / bays;
+    const floorH = 512 / floors;
+
+    for (let f = 0; f < floors; f++) {
+        const y = f * floorH;
+        for (let b = 0; b < bays; b++) {
+            const x = b * bayW;
+            const winX = x + 3;
+            const winY = y + 5;
+            const winW = bayW - 4;
+            const winH = floorH - 6;
+
+            const hash = Math.sin(f * 29.3 + b * 71.9) * 10000;
+            const rand = hash - Math.floor(hash);
+
+            if (rand > 0.58) {
+                if (rand > 0.88) ctx.fillStyle = "#fef08a";
+                else if (rand > 0.74) ctx.fillStyle = "#93c5fd";
+                else ctx.fillStyle = "#fed7aa";
+                ctx.fillRect(winX, winY, winW, winH);
+            }
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createResidentialTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#334155";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const floors = 12;
+    const bays = 10;
+    const bayW = 512 / bays;
+    const floorH = 512 / floors;
+
+    for (let f = 0; f < floors; f++) {
+        const y = f * floorH;
+        ctx.fillStyle = "#475569";
+        ctx.fillRect(0, y + floorH - 8, 512, 7);
+
+        for (let b = 0; b < bays; b++) {
+            const x = b * bayW;
+            const winX = x + 10;
+            const winY = y + 8;
+            const winW = bayW - 20;
+            const winH = floorH - 22;
+
+            ctx.fillStyle = "#1e293b";
+            ctx.fillRect(winX - 3, winY - 3, winW + 6, winH + 6);
+
+            const hash = Math.sin(f * 37.1 + b * 61.3) * 10000;
+            const rand = hash - Math.floor(hash);
+
+            if (rand > 0.45) {
+                ctx.fillStyle = rand > 0.75 ? "#fef3c7" : "#fde68a";
+            } else {
+                ctx.fillStyle = "#0f172a";
+            }
+            ctx.fillRect(winX, winY, winW, winH);
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createResidentialEmissiveTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const floors = 12;
+    const bays = 10;
+    const bayW = 512 / bays;
+    const floorH = 512 / floors;
+
+    for (let f = 0; f < floors; f++) {
+        const y = f * floorH;
+        for (let b = 0; b < bays; b++) {
+            const x = b * bayW;
+            const winX = x + 10;
+            const winY = y + 8;
+            const winW = bayW - 20;
+            const winH = floorH - 22;
+
+            const hash = Math.sin(f * 37.1 + b * 61.3) * 10000;
+            const rand = hash - Math.floor(hash);
+
+            if (rand > 0.45) {
+                ctx.fillStyle = rand > 0.75 ? "#fef3c7" : "#fde68a";
+                ctx.fillRect(winX, winY, winW, winH);
+            }
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createIndustrialTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(0, 0, 512, 512);
+
+    for (let x = 0; x < 512; x += 12) {
+        ctx.fillStyle = (x % 24 === 0) ? "#334155" : "#0f172a";
+        ctx.fillRect(x, 0, 6, 512);
+    }
+
+    for (let b = 24; b < 480; b += 110) {
+        ctx.fillStyle = "#475569";
+        ctx.fillRect(b, 320, 80, 180);
+        for (let sy = 328; sy < 490; sy += 10) {
+            ctx.fillStyle = "#1e293b";
+            ctx.fillRect(b + 4, sy, 72, 3);
+        }
+    }
+
+    ctx.fillStyle = "#0284c7";
+    ctx.fillRect(16, 60, 480, 36);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createRoofTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(0, 0, 256, 256);
+
+    for (let i = 0; i < 900; i++) {
+        const rx = Math.random() * 256;
+        const ry = Math.random() * 256;
+        ctx.fillStyle = Math.random() > 0.5 ? "#334155" : "#0f172a";
+        ctx.fillRect(rx, ry, 2, 2);
+    }
+
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(32, 32, 192, 192);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createHelipadTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#1e293b";
+    ctx.beginPath();
+    ctx.arc(128, 128, 120, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.arc(128, 128, 110, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#facc15";
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(128, 128, 76, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 90px 'Arial Black', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("H", 128, 128);
+
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+        const cx = 128 + Math.cos(a) * 110;
+        const cy = 128 + Math.sin(a) * 110;
+        ctx.fillStyle = "#10b981";
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    return new THREE.CanvasTexture(canvas);
+}
+
+function createSunCoronaTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+
+    const grad = ctx.createRadialGradient(128, 128, 12, 128, 128, 126);
+    grad.addColorStop(0.0, "rgba(255, 255, 255, 1.0)");
+    grad.addColorStop(0.2, "rgba(254, 240, 138, 0.95)");
+    grad.addColorStop(0.5, "rgba(245, 158, 11, 0.45)");
+    grad.addColorStop(0.8, "rgba(234, 88, 12, 0.15)");
+    grad.addColorStop(1.0, "rgba(234, 88, 12, 0.0)");
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 256);
+
+    return new THREE.CanvasTexture(canvas);
+}
+
+function applyBoxFaceUVs(geom, width, height, depth, tileW = 5.0, tileH = 3.6) {
+    const uvAttr = geom.attributes.uv;
+    if (!uvAttr) return;
+
+    for (let i = 0; i < uvAttr.count; i++) {
+        let u = uvAttr.getX(i);
+        let v = uvAttr.getY(i);
+
+        if (i < 8) {
+            u *= Math.max(1.0, depth / tileW);
+            v *= Math.max(1.0, height / tileH);
+        } else if (i < 16) {
+            u *= Math.max(1.0, width / tileW);
+            v *= Math.max(1.0, depth / tileW);
+        } else {
+            u *= Math.max(1.0, width / tileW);
+            v *= Math.max(1.0, height / tileH);
+        }
+        uvAttr.setXY(i, u, v);
+    }
+    uvAttr.needsUpdate = true;
+}
+
+function initSkyDome() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    state.skyCanvas = canvas;
+    state.skyCanvasTex = new THREE.CanvasTexture(canvas);
+
+    const skyGeom = new THREE.SphereGeometry(1400, 32, 24);
+    const skyMat = new THREE.MeshBasicMaterial({
+        map: state.skyCanvasTex,
+        side: THREE.BackSide,
+        depthWrite: false,
+        fog: false
+    });
+    state.skyDome = new THREE.Mesh(skyGeom, skyMat);
+    state.scene.add(state.skyDome);
+
+    // Glowing Sun Disc with Atmospheric Flare
+    const sunGeom = new THREE.PlaneGeometry(80, 80);
+    const sunMat = new THREE.MeshBasicMaterial({
+        map: createSunCoronaTexture(),
+        transparent: true,
+        opacity: 1.0,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        fog: false,
+        blending: THREE.AdditiveBlending
+    });
+    state.sunMesh = new THREE.Mesh(sunGeom, sunMat);
+    const sunDir = new THREE.Vector3(200, 350, 150).normalize();
+    state.sunMesh.position.copy(sunDir.multiplyScalar(1250));
+    state.scene.add(state.sunMesh);
+
+    updateSkyDomeGradient(0.0);
+}
+
+function updateSkyDomeGradient(wf) {
+    if (!state.skyCanvas) return;
+    const ctx = state.skyCanvas.getContext("2d");
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+
+    if (state.weatherMode === "night" || wf < -0.5) {
+        grad.addColorStop(0.0, "#020617");
+        grad.addColorStop(0.4, "#060b19");
+        grad.addColorStop(0.75, "#0d1b2a");
+        grad.addColorStop(1.0, "#1b2a47");
+    } else {
+        const t = npClamp(wf, 0.0, 1.0);
+        const zenith = interpolateHexColor("#0284c7", "#050a14", t);
+        const midSky = interpolateHexColor("#38bdf8", "#0f172a", t);
+        const lowerSky = interpolateHexColor("#bae6fd", "#1e293b", t);
+        const horizon = interpolateHexColor("#fef08a", "#182234", t);
+
+        grad.addColorStop(0.0, zenith);
+        grad.addColorStop(0.4, midSky);
+        grad.addColorStop(0.75, lowerSky);
+        grad.addColorStop(1.0, horizon);
+    }
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 512);
+    if (state.skyCanvasTex) state.skyCanvasTex.needsUpdate = true;
+}
+
+
+// =========================================================================
 // THREE.JS 3D SCENE & LIGHTING SETUP
 // =========================================================================
 
@@ -183,11 +598,10 @@ function initThreeScene() {
 
     // Scene with dynamic atmospheric fog and sky
     state.scene = new THREE.Scene();
-    state.scene.background = new THREE.Color(0x38bdf8);
-    state.scene.fog = new THREE.FogExp2(0xcbe8fc, 0.00045);
+    state.scene.fog = new THREE.FogExp2(0xcbe8fc, 0.00035);
 
     // Perspective Camera
-    state.camera = new THREE.PerspectiveCamera(45, width / height, 1.0, 2500);
+    state.camera = new THREE.PerspectiveCamera(45, width / height, 1.0, 3000);
     state.camera.position.set(0, 260, 320);
 
     // WebGL Renderer with Shadows
@@ -204,15 +618,18 @@ function initThreeScene() {
     state.controls.dampingFactor = 0.05;
     state.controls.maxPolarAngle = Math.PI / 2.08; // Prevent going under ground
     state.controls.minDistance = 30;
-    state.controls.maxDistance = 850;
+    state.controls.maxDistance = 900;
     state.controls.target.set(0, 15, 0);
+
+    // Dynamic Realistic SkyDome & Sun Disc
+    initSkyDome();
 
     // Ambient Hemisphere Lighting
     state.hemiLight = new THREE.HemisphereLight(0xe0f2fe, 0x475569, 0.75);
     state.scene.add(state.hemiLight);
 
     // Directional Sunlight with Shadows
-    state.dirLight = new THREE.DirectionalLight(0xfffaed, 1.75);
+    state.dirLight = new THREE.DirectionalLight(0xfffaed, 1.85);
     state.dirLight.position.set(200, 350, 150);
     state.dirLight.castShadow = true;
     state.dirLight.shadow.mapSize.width = 2048;
@@ -637,53 +1054,221 @@ function createSingleBarricade(roadWidth, dir) {
 
 function buildBuildings3D() {
     state.buildingsGroup = new THREE.Group();
+    state.aviationBeacons = [];
+
+    // Initialize Procedural Facade Textures & Materials
+    const commTex = createCommercialGlassTexture();
+    const commEmissiveTex = createCommercialEmissiveTexture();
+    const resTex = createResidentialTexture();
+    const resEmissiveTex = createResidentialEmissiveTexture();
+    const indTex = createIndustrialTexture();
+    const roofTex = createRoofTexture();
+    const helipadTex = createHelipadTexture();
+
+    // Wall & Roof Materials
+    const commWallMat = new THREE.MeshStandardMaterial({
+        map: commTex,
+        emissiveMap: commEmissiveTex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 0.25,
+        roughness: 0.25,
+        metalness: 0.65
+    });
+    commWallMat.userData = { baseEmissive: 0.25 };
+
+    const resWallMat = new THREE.MeshStandardMaterial({
+        map: resTex,
+        emissiveMap: resEmissiveTex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 0.18,
+        roughness: 0.55,
+        metalness: 0.20
+    });
+    resWallMat.userData = { baseEmissive: 0.18 };
+
+    const indWallMat = new THREE.MeshStandardMaterial({
+        map: indTex,
+        roughness: 0.65,
+        metalness: 0.40
+    });
+
+    const roofMat = new THREE.MeshStandardMaterial({
+        map: roofTex,
+        roughness: 0.85,
+        metalness: 0.10
+    });
+
+    const helipadMat = new THREE.MeshStandardMaterial({
+        map: helipadTex,
+        roughness: 0.45,
+        metalness: 0.20
+    });
+
+    const commMaterials = [commWallMat, commWallMat, roofMat, roofMat, commWallMat, commWallMat];
+    const resMaterials = [resWallMat, resWallMat, roofMat, roofMat, resWallMat, resWallMat];
+    const indMaterials = [indWallMat, indWallMat, roofMat, roofMat, indWallMat, indWallMat];
 
     state.footprints.forEach(bldg => {
         const p = bldg.properties;
         const center = p.center;
 
         const p3d = worldTo3D(center[0], center[1]);
-        const bw = Math.max(2.5, (p.width_m || 25.0) * SCALE);
-        const bd = Math.max(2.5, (p.depth_m || 25.0) * SCALE);
-        const bh = Math.max(4.0, (p.height_m || 30.0) * 0.45);
-
+        const bw = Math.max(3.2, (p.width_m || 25.0) * SCALE);
+        const bd = Math.max(3.2, (p.depth_m || 25.0) * SCALE);
+        const bh = Math.max(4.5, (p.height_m || 30.0) * 0.45);
         const groundY = (p.ground_elev_m - state.terrain.min_elevation_m) * 0.55;
 
-        const geom = new THREE.BoxGeometry(bw, bh, bd);
+        const bldgGroup = new THREE.Group();
+        bldgGroup.position.set(p3d.x, 0, p3d.z);
 
-        // Architectural zoning styling
-        let color = 0x1e293b;
-        let emissive = 0x000000;
-        let emissiveIntensity = 0.0;
+        const isCommercial = (p.zoning === "commercial_high" || p.zoning === "commercial_medium");
+        const isResidential = (p.zoning && p.zoning.startsWith("residential"));
+        const bldgMats = isCommercial ? commMaterials : (isResidential ? resMaterials : indMaterials);
 
-        if (p.zoning === "commercial_high") {
-            // Downtown glass skyscraper
-            color = 0x0f172a;
-            emissive = 0x38bdf8;
-            emissiveIntensity = 0.25;
-        } else if (p.zoning === "residential_high" || p.zoning === "residential_medium") {
-            color = 0x334155;
-            emissive = 0xfef08a;
-            emissiveIntensity = 0.15;
-        } else if (p.zoning === "industrial_heavy") {
-            color = 0x262626;
+        const isSkyscraper = (p.height_m >= 45.0 || (p.zoning === "commercial_high" && p.height_m >= 35.0));
+
+        if (isSkyscraper) {
+            // MULTI-TIER STEPPED SETBACK SKYSCRAPER ARCHITECTURE
+            const h1 = bh * 0.22; // Base podium tier
+            const h2 = bh * 0.58; // Main tower shaft
+            const h3 = bh * 0.20; // Crown / penthouse setback
+
+            const w1 = bw, d1 = bd;
+            const w2 = bw * 0.88, d2 = bd * 0.88;
+            const w3 = bw * 0.72, d3 = bd * 0.72;
+
+            // Tier 1: Base Podium
+            const g1 = new THREE.BoxGeometry(w1, h1, d1);
+            applyBoxFaceUVs(g1, w1, h1, d1, 5.0, 3.6);
+            const m1 = new THREE.Mesh(g1, bldgMats);
+            m1.position.y = groundY + h1 / 2.0;
+            m1.castShadow = true;
+            m1.receiveShadow = true;
+            bldgGroup.add(m1);
+
+            // Tier 2: Main Shaft
+            const g2 = new THREE.BoxGeometry(w2, h2, d2);
+            applyBoxFaceUVs(g2, w2, h2, d2, 5.0, 3.6);
+            const m2 = new THREE.Mesh(g2, bldgMats);
+            m2.position.y = groundY + h1 + h2 / 2.0;
+            m2.castShadow = true;
+            m2.receiveShadow = true;
+            bldgGroup.add(m2);
+
+            // Tier 3: Crown Setback
+            const g3 = new THREE.BoxGeometry(w3, h3, d3);
+            applyBoxFaceUVs(g3, w3, h3, d3, 5.0, 3.6);
+            const m3 = new THREE.Mesh(g3, bldgMats);
+            m3.position.y = groundY + h1 + h2 + h3 / 2.0;
+            m3.castShadow = true;
+            m3.receiveShadow = true;
+            bldgGroup.add(m3);
+
+            const roofTopY = groundY + bh;
+
+            // Rooftop Parapet Border Wall
+            const parapetH = 0.55;
+            const parapetGeom = new THREE.BoxGeometry(w3 * 0.98, parapetH, d3 * 0.98);
+            const parapetMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+            const parapet = new THREE.Mesh(parapetGeom, parapetMat);
+            parapet.position.y = roofTopY + parapetH / 2.0;
+            bldgGroup.add(parapet);
+
+            // Rooftop HVAC Chiller Unit
+            const hvacW = Math.max(1.8, w3 * 0.28);
+            const hvacD = Math.max(1.8, d3 * 0.28);
+            const hvacGeom = new THREE.BoxGeometry(hvacW, 1.3, hvacD);
+            const hvacMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.3 });
+            const hvac = new THREE.Mesh(hvacGeom, hvacMat);
+            hvac.position.set(-w3 * 0.2, roofTopY + 0.65, -d3 * 0.2);
+            bldgGroup.add(hvac);
+
+            // Helipad on high-rises (height >= 75m)
+            if (p.height_m >= 75.0 && w3 >= 6.0) {
+                const padRadius = Math.min(w3 * 0.42, 6.5);
+                const padGeom = new THREE.CylinderGeometry(padRadius, padRadius, 0.25, 24);
+                const padSideMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+                const padMats = [padSideMat, helipadMat, padSideMat];
+                const pad = new THREE.Mesh(padGeom, padMats);
+                pad.position.set(0, roofTopY + 0.15, 0);
+                bldgGroup.add(pad);
+            }
+
+            // Communications Spire & FAA Warning Beacon on top tallest towers (height >= 80m)
+            if (p.height_m >= 80.0) {
+                const spireH = 8.0 + (p.height_m - 80.0) * 0.25;
+                const spireGeom = new THREE.CylinderGeometry(0.12, 0.45, spireH, 8);
+                const spireMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.85, roughness: 0.2 });
+                const spire = new THREE.Mesh(spireGeom, spireMat);
+                spire.position.set(w3 * 0.18, roofTopY + spireH / 2.0, d3 * 0.18);
+                bldgGroup.add(spire);
+
+                // FAA Obstruction Red Warning Beacon Light
+                const beaconGeom = new THREE.SphereGeometry(0.38, 8, 8);
+                const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const beacon = new THREE.Mesh(beaconGeom, beaconMat);
+                beacon.position.set(w3 * 0.18, roofTopY + spireH + 0.2, d3 * 0.18);
+                bldgGroup.add(beacon);
+                state.aviationBeacons.push(beacon);
+            }
+
+        } else if (isResidential) {
+            // RESIDENTIAL MULTI-FAMILY / APARTMENT HOUSING
+            const g = new THREE.BoxGeometry(bw, bh, bd);
+            applyBoxFaceUVs(g, bw, bh, bd, 4.5, 3.2);
+            const m = new THREE.Mesh(g, bldgMats);
+            m.position.y = groundY + bh / 2.0;
+            m.castShadow = true;
+            m.receiveShadow = true;
+            bldgGroup.add(m);
+
+            const roofTopY = groundY + bh;
+
+            // Rooftop Stairwell / Penthouse Hatch
+            const phGeom = new THREE.BoxGeometry(bw * 0.35, 1.8, bd * 0.35);
+            const phMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
+            const ph = new THREE.Mesh(phGeom, phMat);
+            ph.position.set(bw * 0.2, roofTopY + 0.9, -bd * 0.2);
+            bldgGroup.add(ph);
+
+            // Classic Rooftop Cylindrical Water Tank on Stilts
+            const tankRadius = Math.max(0.8, Math.min(1.4, bw * 0.18));
+            const tankH = 2.2;
+            const tankGeom = new THREE.CylinderGeometry(tankRadius, tankRadius, tankH, 12);
+            const tankMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+            const tank = new THREE.Mesh(tankGeom, tankMat);
+            tank.position.set(-bw * 0.25, roofTopY + 1.2 + tankH / 2.0, bd * 0.2);
+            bldgGroup.add(tank);
+
+            // Conical Roof Cap on Tank
+            const capGeom = new THREE.ConeGeometry(tankRadius * 1.1, 0.9, 12);
+            const capMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.6 });
+            const cap = new THREE.Mesh(capGeom, capMat);
+            cap.position.set(-bw * 0.25, roofTopY + 1.2 + tankH + 0.45, bd * 0.2);
+            bldgGroup.add(cap);
+
+        } else {
+            // INDUSTRIAL WAREHOUSES & FACILITIES
+            const g = new THREE.BoxGeometry(bw, bh, bd);
+            applyBoxFaceUVs(g, bw, bh, bd, 6.0, 4.0);
+            const m = new THREE.Mesh(g, bldgMats);
+            m.position.y = groundY + bh / 2.0;
+            m.castShadow = true;
+            m.receiveShadow = true;
+            bldgGroup.add(m);
+
+            const roofTopY = groundY + bh;
+
+            // Rooftop Industrial Ventilation Monitor / Exhaust Ridge
+            const ventGeom = new THREE.BoxGeometry(bw * 0.7, 1.2, bd * 0.25);
+            const ventMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.4 });
+            const vent = new THREE.Mesh(ventGeom, ventMat);
+            vent.position.set(0, roofTopY + 0.6, 0);
+            bldgGroup.add(vent);
         }
 
-        const mat = new THREE.MeshStandardMaterial({
-            color: color,
-            emissive: emissive,
-            emissiveIntensity: emissiveIntensity,
-            roughness: 0.4,
-            metalness: 0.6
-        });
-
-        const mesh = new THREE.Mesh(geom, mat);
-        mesh.position.set(p3d.x, groundY + bh / 2.0, p3d.z);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.userData = { id: p.id, district: p.district, zoning: p.zoning, height: p.height_m, baseEmissive: emissiveIntensity };
-
-        state.buildingsGroup.add(mesh);
+        bldgGroup.userData = { id: p.id, district: p.district, zoning: p.zoning, height: p.height_m, baseEmissive: 0.25 };
+        state.buildingsGroup.add(bldgGroup);
     });
 
     state.scene.add(state.buildingsGroup);
@@ -724,26 +1309,40 @@ function buildFacilities3D() {
 }
 
 function buildRainWeatherFX() {
-    const rainCount = 2000;
+    const rainCount = 3000;
     const geom = new THREE.BufferGeometry();
-    const positions = new Float32Array(rainCount * 3);
+    const positions = new Float32Array(rainCount * 2 * 3);
+
+    state.rainData = [];
+    const streakLength = 4.2;
+    const windOffset = new THREE.Vector3(-1.8, -streakLength, 0.8);
 
     for (let i = 0; i < rainCount; i++) {
-        positions[i * 3] = (Math.random() - 0.5) * 600;
-        positions[i * 3 + 1] = Math.random() * 250 + 10;
-        positions[i * 3 + 2] = (Math.random() - 0.5) * 600;
+        const x = (Math.random() - 0.5) * 650;
+        const y = Math.random() * 260 + 10;
+        const z = (Math.random() - 0.5) * 650;
+        const speed = 190 + Math.random() * 80;
+        state.rainData.push({ x, y, z, speed });
+
+        const idx = i * 6;
+        positions[idx] = x;
+        positions[idx + 1] = y;
+        positions[idx + 2] = z;
+        positions[idx + 3] = x + windOffset.x;
+        positions[idx + 4] = y + windOffset.y;
+        positions[idx + 5] = z + windOffset.z;
     }
 
     geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 
-    const mat = new THREE.PointsMaterial({
-        color: 0x93c5fd,
-        size: 1.2,
+    const mat = new THREE.LineBasicMaterial({
+        color: 0xc7d2fe,
         transparent: true,
-        opacity: 0.5
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending
     });
 
-    state.rainSystem = new THREE.Points(geom, mat);
+    state.rainSystem = new THREE.LineSegments(geom, mat);
     state.scene.add(state.rainSystem);
 }
 
@@ -1311,7 +1910,16 @@ function update3DFacilitiesStatus(depthGrid, snap) {
         const isBlackout = (opSubs < 3);
         state.buildingsGroup.children.forEach(bldg => {
             if (bldg.position.z > 50) { // South alluvial district
-                bldg.material.emissiveIntensity = isBlackout ? 0.02 : 0.25;
+                bldg.traverse(child => {
+                    if (child.isMesh && child.material) {
+                        const mats = Array.isArray(child.material) ? child.material : [child.material];
+                        mats.forEach(m => {
+                            if (m.userData && m.userData.baseEmissive !== undefined) {
+                                m.emissiveIntensity = isBlackout ? 0.02 : m.userData.baseEmissive;
+                            }
+                        });
+                    }
+                });
             }
         });
     }
@@ -1375,11 +1983,13 @@ function applyAtmosphereUpdate(dt) {
 
     const wf = state.currentWeatherFactor;
 
-    let skyCol, fogCol, fogDens, sunCol, sunInt, hemiSky, hemiGnd, hemiInt, rainOpac, emissiveScale;
+    // 1. Update Dynamic Hemispherical SkyDome Gradient & Sun Disc
+    updateSkyDomeGradient(wf);
+
+    let fogCol, fogDens, sunCol, sunInt, hemiSky, hemiGnd, hemiInt, rainOpac, emissiveScale;
 
     if (state.weatherMode === "night" || wf < -0.5) {
         // Midnight City Twin Atmosphere
-        skyCol = new THREE.Color(0x050a18);
         fogCol = new THREE.Color(0x050a18);
         fogDens = 0.0012;
         sunCol = new THREE.Color(0x38bdf8); // Cool moonlight
@@ -1387,49 +1997,53 @@ function applyAtmosphereUpdate(dt) {
         hemiSky = new THREE.Color(0x1e1b4b);
         hemiGnd = new THREE.Color(0x020617);
         hemiInt = 0.25;
-        rainOpac = (parseFloat(sliderRain.value) > 5) ? 0.45 : 0.0;
-        emissiveScale = 1.8;
+        rainOpac = (parseFloat(sliderRain.value) > 5) ? 0.55 : 0.0;
+        emissiveScale = 1.9;
+
+        if (state.sunMesh) state.sunMesh.visible = false;
     } else {
         // Daytime to Tempest Storm continuum: wf from 0.0 (Sunny Day) to 1.0 (Severe Deluge)
         const clampedWf = npClamp(wf, 0.0, 1.0);
 
         // Clear Sunny Day Colors
-        const daySky = new THREE.Color(0x38bdf8);      // Azure daylight blue
         const dayFog = new THREE.Color(0xbfe3fc);      // Soft daylight horizon haze
         const daySun = new THREE.Color(0xfffaed);      // Golden natural sunlight
         const dayHemiSky = new THREE.Color(0xe0f2fe);
         const dayHemiGnd = new THREE.Color(0x475569);
 
         // Severe Storm Deluge Colors
-        const stormSky = new THREE.Color(0x060a14);    // Deep tempest dark navy
-        const stormFog = new THREE.Color(0x060a14);    // Dark rain fog
+        const stormFog = new THREE.Color(0x0a101d);    // Dark rain fog
         const stormSun = new THREE.Color(0x7dd3fc);    // Overcast diffused light
         const stormHemiSky = new THREE.Color(0x1e293b);
         const stormHemiGnd = new THREE.Color(0x020617);
 
-        skyCol = daySky.clone().lerp(stormSky, clampedWf);
         fogCol = dayFog.clone().lerp(stormFog, clampedWf);
-        fogDens = THREE.MathUtils.lerp(0.00042, 0.0017, clampedWf);
+        fogDens = THREE.MathUtils.lerp(0.00035, 0.0016, clampedWf);
 
         sunCol = daySun.clone().lerp(stormSun, clampedWf);
-        sunInt = THREE.MathUtils.lerp(1.85, 0.50, clampedWf);
+        sunInt = THREE.MathUtils.lerp(1.95, 0.45, clampedWf);
 
         hemiSky = dayHemiSky.clone().lerp(stormHemiSky, clampedWf);
         hemiGnd = dayHemiGnd.clone().lerp(stormHemiGnd, clampedWf);
-        hemiInt = THREE.MathUtils.lerp(0.85, 0.28, clampedWf);
+        hemiInt = THREE.MathUtils.lerp(0.85, 0.25, clampedWf);
 
-        rainOpac = (clampedWf < 0.04) ? 0.0 : THREE.MathUtils.lerp(0.12, 0.75, (clampedWf - 0.04) / 0.96);
-        emissiveScale = THREE.MathUtils.lerp(0.15, 1.4, clampedWf);
+        rainOpac = (clampedWf < 0.04) ? 0.0 : THREE.MathUtils.lerp(0.15, 0.85, (clampedWf - 0.04) / 0.96);
+        emissiveScale = THREE.MathUtils.lerp(0.20, 1.5, clampedWf);
+
+        if (state.sunMesh) {
+            state.sunMesh.visible = (clampedWf < 0.75);
+            state.sunMesh.material.opacity = Math.max(0.0, 1.0 - clampedWf * 2.2);
+            state.sunMesh.lookAt(state.camera.position);
+        }
     }
 
-    // Update Three.js scene background and fog
-    state.scene.background.copy(skyCol);
+    // Three.js scene fog
     if (state.scene.fog) {
         state.scene.fog.color.copy(fogCol);
         state.scene.fog.density = fogDens;
     }
 
-    // Directional Sunlight
+    // Directional Sunlight & Shadows
     state.dirLight.color.copy(sunCol);
     state.dirLight.intensity = sunInt;
 
@@ -1448,17 +2062,45 @@ function applyAtmosphereUpdate(dt) {
         }
     }
 
-    // Building Window Emissive Glow (Daylight vs Storm)
+    // Dynamic PBR Road Surface Wetness (Glossy water sheen and reflections)
+    const wetness = (state.weatherMode === "night") ? ((parseFloat(sliderRain.value) > 5) ? 0.85 : 0.1) : npClamp(wf, 0.0, 1.0);
+    const roadRoughness = THREE.MathUtils.lerp(0.82, 0.15, wetness);
+    const roadMetalness = THREE.MathUtils.lerp(0.08, 0.45, wetness);
+
+    if (state.roadLinesGroup) {
+        state.roadLinesGroup.children.forEach(grp => {
+            if (grp.userData && grp.userData.asphalt) {
+                grp.userData.asphalt.material.roughness = roadRoughness;
+                grp.userData.asphalt.material.metalness = roadMetalness;
+            }
+        });
+    }
+
+    // Dynamic Ground Wetness
+    if (state.terrainMesh) {
+        state.terrainMesh.material.roughness = THREE.MathUtils.lerp(0.85, 0.38, wetness);
+        state.terrainMesh.material.metalness = THREE.MathUtils.lerp(0.05, 0.28, wetness);
+    }
+
+    // Building Window Emissive Glow (Daylight vs Storm vs Blackout)
     if (state.buildingsGroup) {
         const isGridBlackout = (state.currentFrame && state.currentFrame.snapshot && state.currentFrame.snapshot.operational_substations < 3);
-        state.buildingsGroup.children.forEach(bldg => {
-            if (bldg.material && bldg.userData && bldg.userData.baseEmissive !== undefined) {
-                if (isGridBlackout && bldg.position.z > 50) {
-                    bldg.material.emissiveIntensity = 0.02;
-                } else {
-                    bldg.material.emissiveIntensity = bldg.userData.baseEmissive * emissiveScale;
+        state.buildingsGroup.children.forEach(bldgGroup => {
+            const isBlackedOut = isGridBlackout && bldgGroup.position.z > 50;
+            bldgGroup.traverse(child => {
+                if (child.isMesh && child.material) {
+                    const mats = Array.isArray(child.material) ? child.material : [child.material];
+                    mats.forEach(m => {
+                        if (m && m.userData && m.userData.baseEmissive !== undefined) {
+                            if (isBlackedOut) {
+                                m.emissiveIntensity = 0.02;
+                            } else {
+                                m.emissiveIntensity = m.userData.baseEmissive * emissiveScale;
+                            }
+                        }
+                    });
                 }
-            }
+            });
         });
     }
 }
@@ -1485,19 +2127,45 @@ function animate() {
         state.waterMesh.material.opacity = 0.80 + Math.sin(elapsedTime * 2.5) * 0.05;
     }
 
-    // 3. Animate Rain Particles (fall speed proportional to weather intensity)
-    if (state.rainSystem && state.rainSystem.visible) {
-        const fallSpeed = 120 + state.currentWeatherFactor * 160;
+    // 3. Animate Angled Velocity Rain Streaks with Wind Shear & Gusts
+    if (state.rainSystem && state.rainSystem.visible && state.rainData && state.rainData.length > 0) {
+        const wf = npClamp(state.currentWeatherFactor, 0.0, 1.0);
+        const speedMult = 0.85 + wf * 0.75;
+        const windSpeedX = -26.0 * (0.3 + wf * 0.7);
+        const windSpeedZ = 12.0 * (0.3 + wf * 0.7);
         const pos = state.rainSystem.geometry.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-            let py = pos.getY(i) - fallSpeed * dt;
-            if (py < 0) py = 250;
-            pos.setY(i, py);
+
+        for (let i = 0; i < state.rainData.length; i++) {
+            const r = state.rainData[i];
+            r.y -= (r.speed * speedMult) * dt;
+            r.x += windSpeedX * dt;
+            r.z += windSpeedZ * dt;
+
+            if (r.y < 0) {
+                r.y = 250 + Math.random() * 35;
+                r.x = (Math.random() - 0.5) * 650;
+                r.z = (Math.random() - 0.5) * 650;
+            }
+
+            const idx = i * 6;
+            // Streak Head
+            pos.setXYZ(idx, r.x, r.y, r.z);
+            // Streak Tail with Wind Drift Angle
+            pos.setXYZ(idx + 3, r.x + windSpeedX * 0.038, r.y - 4.5, r.z + windSpeedZ * 0.038);
         }
         pos.needsUpdate = true;
     }
 
-    // 4. Drone Orbit Mode
+    // 4. Pulse FAA Aviation Warning Beacons on Skyscraper Broadcast Spires
+    if (state.aviationBeacons && state.aviationBeacons.length > 0) {
+        const isBeaconFlash = (elapsedTime % 1.0) < 0.28;
+        const beaconColor = isBeaconFlash ? 0xff2222 : 0x330505;
+        for (let i = 0; i < state.aviationBeacons.length; i++) {
+            state.aviationBeacons[i].material.color.setHex(beaconColor);
+        }
+    }
+
+    // 5. Drone Orbit Mode
     if (state.isDroneOrbit) {
         state.orbitAngle += dt * 0.15;
         const radius = 340;
@@ -1507,13 +2175,13 @@ function animate() {
         state.controls.target.set(0, 15, 0);
     }
 
-    // 5. Random Storm Lightning Flashes (only in severe storms)
+    // 6. Random Storm Lightning Flashes (only in severe storms)
     if (state.currentWeatherFactor > 0.65 && Math.random() < 0.009) {
         state.flashLight.intensity = 4.5;
         setTimeout(() => { if (state.flashLight) state.flashLight.intensity = 0.0; }, 75);
     }
 
-    // 6. Flash Warning Strobe Beacons on Road Barricades
+    // 7. Flash Warning Strobe Beacons on Road Barricades
     if (state.barriersGroup && state.barriersGroup.visible) {
         const flashTick = Math.floor(Date.now() / 250) % 2 === 0;
         state.barriersGroup.children.forEach(pair => {
