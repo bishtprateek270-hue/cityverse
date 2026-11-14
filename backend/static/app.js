@@ -499,6 +499,21 @@ function createSunCoronaTexture() {
     return new THREE.CanvasTexture(canvas);
 }
 
+function createRainDropTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 16;
+    canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+    const grad = ctx.createLinearGradient(8, 0, 8, 64);
+    grad.addColorStop(0.0, "rgba(224, 242, 254, 0.0)");
+    grad.addColorStop(0.3, "rgba(186, 230, 253, 0.35)");
+    grad.addColorStop(0.8, "rgba(147, 197, 253, 0.75)");
+    grad.addColorStop(1.0, "rgba(255, 255, 255, 0.90)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(4, 0, 8, 64);
+    return new THREE.CanvasTexture(canvas);
+}
+
 function applyBoxFaceUVs(geom, width, height, depth, tileW = 5.0, tileH = 3.6) {
     const uvAttr = geom.attributes.uv;
     if (!uvAttr) return;
@@ -1309,40 +1324,35 @@ function buildFacilities3D() {
 }
 
 function buildRainWeatherFX() {
-    const rainCount = 3000;
+    const rainCount = 2400;
     const geom = new THREE.BufferGeometry();
-    const positions = new Float32Array(rainCount * 2 * 3);
+    const positions = new Float32Array(rainCount * 3);
 
     state.rainData = [];
-    const streakLength = 4.2;
-    const windOffset = new THREE.Vector3(-1.8, -streakLength, 0.8);
-
     for (let i = 0; i < rainCount; i++) {
-        const x = (Math.random() - 0.5) * 650;
-        const y = Math.random() * 260 + 10;
-        const z = (Math.random() - 0.5) * 650;
-        const speed = 190 + Math.random() * 80;
+        const x = (Math.random() - 0.5) * 620;
+        const y = Math.random() * 260 + 5;
+        const z = (Math.random() - 0.5) * 620;
+        const speed = 160 + Math.random() * 80;
         state.rainData.push({ x, y, z, speed });
 
-        const idx = i * 6;
-        positions[idx] = x;
-        positions[idx + 1] = y;
-        positions[idx + 2] = z;
-        positions[idx + 3] = x + windOffset.x;
-        positions[idx + 4] = y + windOffset.y;
-        positions[idx + 5] = z + windOffset.z;
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
     }
 
     geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 
-    const mat = new THREE.LineBasicMaterial({
-        color: 0xc7d2fe,
+    const mat = new THREE.PointsMaterial({
+        color: 0xbae6fd,
+        size: 1.8,
+        map: createRainDropTexture(),
         transparent: true,
         opacity: 0.0,
-        blending: THREE.AdditiveBlending
+        depthWrite: false
     });
 
-    state.rainSystem = new THREE.LineSegments(geom, mat);
+    state.rainSystem = new THREE.Points(geom, mat);
     state.scene.add(state.rainSystem);
 }
 
@@ -2021,13 +2031,13 @@ function applyAtmosphereUpdate(dt) {
         fogDens = THREE.MathUtils.lerp(0.00035, 0.0016, clampedWf);
 
         sunCol = daySun.clone().lerp(stormSun, clampedWf);
-        sunInt = THREE.MathUtils.lerp(1.95, 0.45, clampedWf);
+        sunInt = THREE.MathUtils.lerp(1.95, 0.90, clampedWf);
 
         hemiSky = dayHemiSky.clone().lerp(stormHemiSky, clampedWf);
         hemiGnd = dayHemiGnd.clone().lerp(stormHemiGnd, clampedWf);
-        hemiInt = THREE.MathUtils.lerp(0.85, 0.25, clampedWf);
+        hemiInt = THREE.MathUtils.lerp(0.85, 0.55, clampedWf);
 
-        rainOpac = (clampedWf < 0.04) ? 0.0 : THREE.MathUtils.lerp(0.15, 0.85, (clampedWf - 0.04) / 0.96);
+        rainOpac = (clampedWf < 0.04) ? 0.0 : THREE.MathUtils.lerp(0.12, 0.50, (clampedWf - 0.04) / 0.96);
         emissiveScale = THREE.MathUtils.lerp(0.20, 1.5, clampedWf);
 
         if (state.sunMesh) {
@@ -2054,7 +2064,9 @@ function applyAtmosphereUpdate(dt) {
 
     // Rain Particle Streaks (opacity & visibility)
     if (state.rainSystem) {
-        if (rainOpac <= 0.01) {
+        const chk = document.getElementById("chkRain");
+        const isChecked = chk ? chk.checked : true;
+        if (rainOpac <= 0.01 || !isChecked) {
             state.rainSystem.visible = false;
         } else {
             state.rainSystem.visible = true;
@@ -2127,12 +2139,12 @@ function animate() {
         state.waterMesh.material.opacity = 0.80 + Math.sin(elapsedTime * 2.5) * 0.05;
     }
 
-    // 3. Animate Angled Velocity Rain Streaks with Wind Shear & Gusts
+    // 3. Animate Natural Falling Rain Particles with Wind Drift
     if (state.rainSystem && state.rainSystem.visible && state.rainData && state.rainData.length > 0) {
         const wf = npClamp(state.currentWeatherFactor, 0.0, 1.0);
         const speedMult = 0.85 + wf * 0.75;
-        const windSpeedX = -26.0 * (0.3 + wf * 0.7);
-        const windSpeedZ = 12.0 * (0.3 + wf * 0.7);
+        const windSpeedX = -20.0 * wf;
+        const windSpeedZ = 8.0 * wf;
         const pos = state.rainSystem.geometry.attributes.position;
 
         for (let i = 0; i < state.rainData.length; i++) {
@@ -2142,16 +2154,12 @@ function animate() {
             r.z += windSpeedZ * dt;
 
             if (r.y < 0) {
-                r.y = 250 + Math.random() * 35;
-                r.x = (Math.random() - 0.5) * 650;
-                r.z = (Math.random() - 0.5) * 650;
+                r.y = 250 + Math.random() * 25;
+                r.x = (Math.random() - 0.5) * 620;
+                r.z = (Math.random() - 0.5) * 620;
             }
 
-            const idx = i * 6;
-            // Streak Head
-            pos.setXYZ(idx, r.x, r.y, r.z);
-            // Streak Tail with Wind Drift Angle
-            pos.setXYZ(idx + 3, r.x + windSpeedX * 0.038, r.y - 4.5, r.z + windSpeedZ * 0.038);
+            pos.setXYZ(i, r.x, r.y, r.z);
         }
         pos.needsUpdate = true;
     }
