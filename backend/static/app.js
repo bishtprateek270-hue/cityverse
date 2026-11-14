@@ -389,13 +389,21 @@ function buildRoadNetwork3D() {
         const coords = feat.geometry.coordinates;
         const p = feat.properties;
         const isHighway = (p.road_class === "highway");
+        const isBridge = !!p.is_bridge;
 
         const p1 = worldTo3D(coords[0][0], coords[0][1]);
         const p2 = worldTo3D(coords[1][0], coords[1][1]);
 
         // Sample elevation at road ends
-        const y1 = getTerrainElevation(coords[0][0], coords[0][1]) + 0.35;
-        const y2 = getTerrainElevation(coords[1][0], coords[1][1]) + 0.35;
+        let y1 = getTerrainElevation(coords[0][0], coords[0][1]) + 0.35;
+        let y2 = getTerrainElevation(coords[1][0], coords[1][1]) + 0.35;
+
+        if (isBridge) {
+            // Elevate bridge deck cleanly above riverbed and channel water
+            const bridgeDeckY = Math.max(y1, y2) + 2.5;
+            y1 = bridgeDeckY;
+            y2 = bridgeDeckY;
+        }
 
         const startVec = new THREE.Vector3(p1.x, y1, p1.z);
         const endVec = new THREE.Vector3(p2.x, y2, p2.z);
@@ -406,13 +414,15 @@ function buildRoadNetwork3D() {
             id: p.edge_id,
             start: startVec,
             end: endVec,
+            startWorld: { x: coords[0][0], y: coords[0][1] },
+            endWorld: { x: coords[1][0], y: coords[1][1] },
             u: p.u,
             v: p.v,
             length: length,
             speedLimit: p.free_flow_speed_kmh || 40.0,
             roadClass: p.road_class,
-            isBridge: p.is_bridge,
-            isFlooded: false,
+            isBridge: isBridge,
+            isClosed: false,
             waterDepth: 0.0
         };
 
@@ -422,15 +432,36 @@ function buildRoadNetwork3D() {
         roadMesh.userData = { edgeId: p.edge_id, baseColor: isHighway ? 0x94a3b8 : 0x475569, width: width };
         state.roadLinesGroup.add(roadMesh);
 
-        // Roadblock Barrier mesh (placed when closed)
-        const barrier = createBarrierMesh(startVec, endVec);
-        barrier.userData = { edgeId: p.edge_id };
-        barrier.visible = false;
-        state.barriersGroup.add(barrier);
+        // If it's a bridge, add bridge support piers underneath
+        if (isBridge) {
+            const bridgePillars = createBridgeSupportPillars(startVec, endVec);
+            state.roadLinesGroup.add(bridgePillars);
+        }
+
+        // Roadblock Barrier Pair (placed at both entrances of road segment)
+        const barrierPair = createRoadBarricadePair(startVec, endVec, width);
+        barrierPair.userData = { edgeId: p.edge_id };
+        barrierPair.visible = false;
+        state.barriersGroup.add(barrierPair);
     });
 
     state.scene.add(state.roadLinesGroup);
     state.scene.add(state.barriersGroup);
+}
+
+function createBridgeSupportPillars(p1, p2) {
+    const group = new THREE.Group();
+    const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+    const height = Math.max(2.0, mid.y + 1.0);
+
+    const pillarGeom = new THREE.CylinderGeometry(0.8, 1.1, height, 8);
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 });
+    const pier = new THREE.Mesh(pillarGeom, pillarMat);
+    pier.position.set(mid.x, mid.y / 2.0, mid.z);
+    pier.castShadow = true;
+    pier.receiveShadow = true;
+    group.add(pier);
+    return group;
 }
 
 function createRoadRibbon(p1, p2, width, colorHex) {
@@ -460,21 +491,95 @@ function createRoadRibbon(p1, p2, width, colorHex) {
     return new THREE.Mesh(geom, mat);
 }
 
-function createBarrierMesh(p1, p2) {
-    // 3D hazard barricade positioned at midpoint
-    const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
-    const geom = new THREE.BoxGeometry(3.5, 1.2, 0.4);
-    const mat = new THREE.MeshStandardMaterial({
-        color: 0xef4444,
+function createRoadBarricadePair(p1, p2, width) {
+    const group = new THREE.Group();
+    const len = p1.distanceTo(p2);
+    const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
+
+    if (len < 12.0) {
+        // Single barricade at midpoint for very short edges
+        const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+        const b = createSingleBarricade(width, dir);
+        b.position.copy(mid);
+        group.add(b);
+    } else {
+        // Dual barricades positioned at both entrances of the road segment
+        const offset = Math.min(3.5, len * 0.12);
+
+        const pos1 = new THREE.Vector3().addVectors(p1, dir.clone().multiplyScalar(offset));
+        const b1 = createSingleBarricade(width, dir);
+        b1.position.copy(pos1);
+        group.add(b1);
+
+        const pos2 = new THREE.Vector3().subVectors(p2, dir.clone().multiplyScalar(offset));
+        const b2 = createSingleBarricade(width, dir);
+        b2.position.copy(pos2);
+        group.add(b2);
+    }
+
+    return group;
+}
+
+function createSingleBarricade(roadWidth, dir) {
+    const bGroup = new THREE.Group();
+    const barWidth = Math.max(2.8, roadWidth * 1.15);
+
+    // Upper reflective orange hazard board
+    const boardGeom = new THREE.BoxGeometry(barWidth, 0.4, 0.2);
+    const boardMat1 = new THREE.MeshStandardMaterial({
+        color: 0xf97316,
         roughness: 0.3,
-        emissive: 0x991b1b,
-        emissiveIntensity: 0.6
+        emissive: 0xc2410c,
+        emissiveIntensity: 0.5
     });
-    const mesh = new THREE.Mesh(geom, mat);
-    mesh.position.copy(mid);
-    mesh.position.y += 0.6;
-    mesh.lookAt(p2);
-    return mesh;
+    const board1 = new THREE.Mesh(boardGeom, boardMat1);
+    board1.position.y = 1.35;
+    board1.castShadow = true;
+    bGroup.add(board1);
+
+    // Lower reflective white hazard board
+    const boardMat2 = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.3,
+        emissive: 0x334155,
+        emissiveIntensity: 0.2
+    });
+    const board2 = new THREE.Mesh(boardGeom, boardMat2);
+    board2.position.y = 0.75;
+    board2.castShadow = true;
+    bGroup.add(board2);
+
+    // Vertical black metal support posts
+    const postGeom = new THREE.CylinderGeometry(0.08, 0.08, 1.6, 8);
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 });
+    
+    const postLeft = new THREE.Mesh(postGeom, postMat);
+    postLeft.position.set(-barWidth * 0.42, 0.8, 0);
+    bGroup.add(postLeft);
+
+    const postRight = new THREE.Mesh(postGeom, postMat);
+    postRight.position.set(barWidth * 0.42, 0.8, 0);
+    bGroup.add(postRight);
+
+    // Dual flashing emergency strobe beacon lights on top of each barricade
+    const beaconGeom = new THREE.SphereGeometry(0.18, 8, 8);
+    const beaconMat1 = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+    const beaconMat2 = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+    
+    const beacon1 = new THREE.Mesh(beaconGeom, beaconMat1);
+    beacon1.position.set(-barWidth * 0.38, 1.7, 0);
+    bGroup.add(beacon1);
+
+    const beacon2 = new THREE.Mesh(beaconGeom, beaconMat2);
+    beacon2.position.set(barWidth * 0.38, 1.7, 0);
+    bGroup.add(beacon2);
+
+    bGroup.userData.beacons = [beacon1, beacon2];
+
+    // Align barricade perpendicular to road travel direction
+    bGroup.rotation.y = Math.atan2(dir.x, dir.z);
+
+    return bGroup;
 }
 
 function buildBuildings3D() {
@@ -598,14 +703,15 @@ function spawnTrafficFleet(count = 180) {
     state.trafficGroup = new THREE.Group();
     state.vehicles = [];
 
-    const edgeIds = Object.keys(state.roadGraph);
-    if (edgeIds.length === 0) return;
+    // Filter available edges to only open and dry roads (no flooded roads or water channels)
+    const openDryEdges = Object.values(state.roadGraph).filter(e => !e.isClosed && (e.waterDepth || 0.0) < 0.05);
+    const candidateEdges = openDryEdges.length > 0 ? openDryEdges : Object.values(state.roadGraph);
+    if (candidateEdges.length === 0) return;
 
     const carColors = [0xf59e0b, 0xffffff, 0x38bdf8, 0xe2e8f0, 0x94a3b8, 0xef4444];
 
     for (let i = 0; i < count; i++) {
-        const edgeId = edgeIds[Math.floor(Math.random() * edgeIds.length)];
-        const edge = state.roadGraph[edgeId];
+        const edge = candidateEdges[Math.floor(Math.random() * candidateEdges.length)];
 
         const isEmergency = (Math.random() < 0.08); // 8% Ambulances / Fire
         const color = isEmergency ? 0xef4444 : carColors[Math.floor(Math.random() * carColors.length)];
@@ -617,7 +723,7 @@ function spawnTrafficFleet(count = 180) {
         state.vehicles.push({
             id: i,
             mesh: carMesh,
-            edgeId: edgeId,
+            edgeId: edge.id,
             t: Math.random(), // Position along edge (0.0 to 1.0)
             baseSpeed: (14.0 + Math.random() * 12.0) * (isEmergency ? 1.5 : 1.0),
             currentSpeed: 16.0,
@@ -659,7 +765,7 @@ function createCarMesh(colorHex, isEmergency) {
     group.add(hl1);
     group.add(hl2);
 
-    // Brake lights
+    // Brake / Tail lights
     const brakeMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
     const bl1 = new THREE.Mesh(lightGeom, brakeMat);
     bl1.position.set(-0.5, 0.5, -1.6);
@@ -667,6 +773,7 @@ function createCarMesh(colorHex, isEmergency) {
     bl2.position.set(0.5, 0.5, -1.6);
     group.add(bl1);
     group.add(bl2);
+    group.userData.tailLights = bl1;
 
     // Emergency Siren
     if (isEmergency) {
@@ -685,70 +792,109 @@ function updateTraffic(dt) {
     if (!state.trafficGroup || state.vehicles.length === 0) return;
 
     state.vehicles.forEach(veh => {
-        const edge = state.roadGraph[veh.edgeId];
+        let edge = state.roadGraph[veh.edgeId];
         if (!edge) return;
 
         const water = edge.waterDepth || 0.0;
+        const isRoadClosed = edge.isClosed || (water >= 0.15);
 
-        // Passability Logic
-        if (water >= 0.30) {
-            // Emergency Impassable: Vehicle stops, hazard lights blink, cannot proceed!
-            veh.currentSpeed = 0.0;
-            veh.isStalled = true;
-        } else if (water >= 0.15) {
-            // Passenger stall threshold: Normal cars stop or turn around; emergency slow down
-            if (veh.isEmergency) {
-                veh.currentSpeed = veh.baseSpeed * 0.45; // High clearance crawling
-                veh.isStalled = false;
-            } else {
+        // 1. Strict Passability & Obstacle Logic
+        if (isRoadClosed) {
+            // Road is submerged / barricaded
+            if (!veh.isEmergency) {
+                // Normal Passenger Car: Strictly cannot drive in floodwater!
                 veh.currentSpeed = 0.0;
                 veh.isStalled = true;
-                // Attempt U-turn after short wait
+
+                // Attempt evacuation: If vehicle was near an intersection, try to retreat onto dry road
                 veh.waitingTimer += dt;
-                if (veh.waitingTimer > 1.5) {
-                    veh.direction *= -1; // Turn around to retreat
-                    veh.waitingTimer = 0;
+                if (veh.waitingTimer > 1.2) {
+                    const nearNode = (veh.t < 0.5) ? edge.u : edge.v;
+                    const dryOptions = Object.values(state.roadGraph).filter(e => 
+                        (e.u === nearNode || e.v === nearNode) && 
+                        e.id !== edge.id && 
+                        !e.isClosed && 
+                        (e.waterDepth || 0.0) < 0.05
+                    );
+
+                    if (dryOptions.length > 0) {
+                        const nextEdge = dryOptions[Math.floor(Math.random() * dryOptions.length)];
+                        veh.edgeId = nextEdge.id;
+                        veh.t = (nextEdge.u === nearNode) ? 0.02 : 0.98;
+                        veh.direction = (nextEdge.u === nearNode) ? 1 : -1;
+                        veh.isStalled = false;
+                        veh.currentSpeed = veh.baseSpeed * 0.7;
+                        veh.waitingTimer = 0;
+                        return; // Rerouted onto dry road
+                    }
+                }
+
+                // Car is stopped stationary at the barricade: flash hazard blinkers
+                if (veh.mesh.userData.tailLights) {
+                    const blink = Math.floor(Date.now() / 350) % 2 === 0;
+                    veh.mesh.userData.tailLights.material.color.setHex(blink ? 0xf59e0b : 0xef4444);
+                }
+                return; // Absolutely DO NOT advance position into floodwater!
+            } else {
+                // Emergency Ambulance
+                if (water >= 0.30) {
+                    veh.currentSpeed = 0.0;
+                    veh.isStalled = true;
+                    return; // Even ambulances halt at extreme flood depth
+                } else {
+                    // High-clearance slow emergency crawl through moderate water
+                    veh.currentSpeed = veh.baseSpeed * 0.35;
                     veh.isStalled = false;
                 }
             }
         } else if (water >= 0.05) {
-            // Speed degraded (Pregnolato curve)
-            veh.currentSpeed = veh.baseSpeed * 0.55;
+            // Shallow Ponding: Speed degraded (Pregnolato empirical urban curve)
+            veh.currentSpeed = veh.baseSpeed * 0.50;
             veh.isStalled = false;
+            veh.waitingTimer = 0;
         } else {
-            // Open Road: Normal free flow
+            // Dry Open Road: Free flow
             veh.currentSpeed = veh.baseSpeed;
             veh.isStalled = false;
             veh.waitingTimer = 0;
         }
 
         // Advance position along road
-        const stepDist = (veh.currentSpeed * dt) / Math.max(10.0, edge.length);
+        const stepDist = (veh.currentSpeed * dt) / Math.max(12.0, edge.length);
         veh.t += stepDist * veh.direction;
 
-        // Check if reached road intersection
+        // Approaching road intersection (end of edge)
         if (veh.t >= 1.0 || veh.t <= 0.0) {
-            // Pick next connected road edge
-            const nextNode = (veh.t >= 1.0) ? edge.v : edge.u;
-            const connectedEdges = Object.values(state.roadGraph).filter(e => 
-                (e.u === nextNode || e.v === nextNode) && e.id !== edge.id && e.waterDepth < 0.25
+            const hitNode = (veh.t >= 1.0) ? edge.v : edge.u;
+
+            // Strict routing: Cars only choose connected roads that are DRY and NOT CLOSED
+            const availableConnections = Object.values(state.roadGraph).filter(e => 
+                (e.u === hitNode || e.v === hitNode) && 
+                e.id !== edge.id && 
+                !e.isClosed && 
+                (e.waterDepth || 0.0) < 0.05
             );
 
-            if (connectedEdges.length > 0) {
-                const nextEdge = connectedEdges[Math.floor(Math.random() * connectedEdges.length)];
+            if (availableConnections.length > 0) {
+                // Turn onto an open dry road
+                const nextEdge = availableConnections[Math.floor(Math.random() * availableConnections.length)];
                 veh.edgeId = nextEdge.id;
-                veh.t = (nextEdge.u === nextNode) ? 0.0 : 1.0;
-                veh.direction = (nextEdge.u === nextNode) ? 1 : -1;
+                veh.t = (nextEdge.u === hitNode) ? 0.02 : 0.98;
+                veh.direction = (nextEdge.u === hitNode) ? 1 : -1;
             } else {
-                // Dead end or surrounded by flood: reverse direction
+                // Dead end or all outbound roads are flooded/barricaded!
+                // Stop before the roadblock, perform U-turn, and head back on open road
                 veh.direction *= -1;
-                veh.t = Math.max(0.01, Math.min(0.99, veh.t));
+                veh.t = npClamp(veh.t, 0.03, 0.97);
             }
         }
 
-        // Interpolate 3D position between edge start and end
+        // Clamp position within edge bounds
+        veh.t = npClamp(veh.t, 0.0, 1.0);
+
+        // Interpolate 3D position
         const pos = new THREE.Vector3().lerpVectors(edge.start, edge.end, veh.t);
-        pos.y += 0.35; // Hover on road surface
+        pos.y += 0.35; // Place on road surface
         veh.mesh.position.copy(pos);
 
         // Orient vehicle along road direction
@@ -923,43 +1069,63 @@ function update3DRoadConditions(depthGrid) {
 
     state.roadLinesGroup.children.forEach(mesh => {
         const edgeId = mesh.userData.edgeId;
+        if (!edgeId) return; // Skip non-edge children like bridge piers
         const edge = state.roadGraph[edgeId];
         if (!edge) return;
 
-        // Sample midpoint water depth
-        const midX = (edge.start.x + 300) * 10;
-        const midY = (300 - edge.start.z) * 10;
-        const c = Math.floor(npClamp(midX / 50.0, 0, 119));
-        const r = Math.floor(npClamp((6000.0 - midY) / 50.0, 0, 119));
+        // Sample water depth across 5 points along road segment using exact world coords
+        let maxWater = 0.0;
+        const steps = 4;
+        for (let s = 0; s <= steps; s++) {
+            const frac = s / steps;
+            const wx = edge.startWorld.x + (edge.endWorld.x - edge.startWorld.x) * frac;
+            const wy = edge.startWorld.y + (edge.endWorld.y - edge.startWorld.y) * frac;
+            const c = Math.floor(npClamp(wx / 50.0, 0, 119));
+            const r = Math.floor(npClamp((6000.0 - wy) / 50.0, 0, 119));
+            const d = depthGrid[r][c] || 0.0;
+            if (d > maxWater) maxWater = d;
+        }
 
-        const water = depthGrid[r][c];
-        edge.waterDepth = water;
+        // Bridge handling: bridge is elevated above river
+        if (edge.isBridge) {
+            // Bridges only submerge if water reaches bridge deck height (overtopping >= 2.5m)
+            if (maxWater < 2.5) {
+                edge.waterDepth = 0.0;
+            } else {
+                edge.waterDepth = maxWater - 2.5;
+            }
+        } else {
+            edge.waterDepth = maxWater;
+        }
 
-        // Find associated barrier mesh
+        // Update road passability status
+        edge.isClosed = (edge.waterDepth >= 0.15);
+
+        // Find associated barrier mesh group
         const barrier = state.barriersGroup.children.find(b => b.userData.edgeId === edgeId);
 
-        if (water >= 0.30) {
-            // Impassable closed: Glowing red hazard ribbon + 3D Barricades
+        if (edge.waterDepth >= 0.30) {
+            // Severe Flooding / Emergency Cutoff: Hazard Red ribbon + Active Barricades
             mesh.material.color.setHex(0xef4444);
-            mesh.material.emissive = new THREE.Color(0xb91c1c);
-            mesh.material.emissiveIntensity = 0.5;
+            mesh.material.emissive.setHex(0xb91c1c);
+            mesh.material.emissiveIntensity = 0.8;
             if (barrier) barrier.visible = true;
-        } else if (water >= 0.15) {
-            // Stalled passenger vehicles: Orange ribbon
+        } else if (edge.waterDepth >= 0.15) {
+            // Passenger Stall / Closed Road: Glowing Hazard Orange-Red + Active Barricades
             mesh.material.color.setHex(0xf97316);
-            mesh.material.emissive = new THREE.Color(0xc2410c);
-            mesh.material.emissiveIntensity = 0.25;
-            if (barrier) barrier.visible = false;
-        } else if (water >= 0.05) {
-            // Speed degraded: Amber ribbon
+            mesh.material.emissive.setHex(0xc2410c);
+            mesh.material.emissiveIntensity = 0.6;
+            if (barrier) barrier.visible = true;
+        } else if (edge.waterDepth >= 0.05) {
+            // Shallow Ponding: Speed Degraded (Amber)
             mesh.material.color.setHex(0xeab308);
-            mesh.material.emissive = new THREE.Color(0x000000);
-            mesh.material.emissiveIntensity = 0.0;
+            mesh.material.emissive.setHex(0x78350f);
+            mesh.material.emissiveIntensity = 0.2;
             if (barrier) barrier.visible = false;
         } else {
-            // Open Road: Restore base asphalt color
+            // Open Road: Asphalt Dark Slate
             mesh.material.color.setHex(mesh.userData.baseColor);
-            mesh.material.emissive = new THREE.Color(0x000000);
+            mesh.material.emissive.setHex(0x000000);
             mesh.material.emissiveIntensity = 0.0;
             if (barrier) barrier.visible = false;
         }
@@ -1072,6 +1238,21 @@ function animate() {
     if (rainIntensity > 100 && Math.random() < 0.008) {
         state.flashLight.intensity = 4.0;
         setTimeout(() => { if (state.flashLight) state.flashLight.intensity = 0.0; }, 80);
+    }
+
+    // 6. Flash Warning Strobe Beacons on Road Barricades
+    if (state.barriersGroup && state.barriersGroup.visible) {
+        const flashTick = Math.floor(Date.now() / 250) % 2 === 0;
+        state.barriersGroup.children.forEach(pair => {
+            if (pair.visible) {
+                pair.children.forEach(single => {
+                    if (single.userData && single.userData.beacons) {
+                        single.userData.beacons[0].material.color.setHex(flashTick ? 0xef4444 : 0x450a0a);
+                        single.userData.beacons[1].material.color.setHex(!flashTick ? 0xf59e0b : 0x451a03);
+                    }
+                });
+            }
+        });
     }
 
     state.controls.update();
