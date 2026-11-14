@@ -60,6 +60,9 @@ class CityStateManager:
         self.pump_overrides: Dict[str, float] = {}
         self.manual_roadblocks: set = set() # Set of (u, v) blocked by emergency barriers
         
+        # Base DEM for pristine terrain restoration
+        self.base_dem = self.city.grid.dem.copy()
+        
         # Static normalized DEM for neural model
         self.dem_normalized = torch.from_numpy(
             (self.city.grid.dem - self.city.grid.dem.min()) / max(1.0, (self.city.grid.dem.max() - self.city.grid.dem.min()))
@@ -101,6 +104,12 @@ class CityStateManager:
             for r, c in barrier.get("cells", []):
                 self.city.grid.dem[r, c] += h_add
                 self.hydro.overland.dem[r, c] += h_add
+
+    def reset_terrain_barriers(self):
+        """Restores original DEM without any temporary flood barriers or sandbags."""
+        if hasattr(self, "base_dem"):
+            self.city.grid.dem[:] = self.base_dem
+            self.hydro.overland.dem[:] = self.base_dem
 
     def step_physics(self, dt_s: float = 60.0) -> Dict[str, Any]:
         """Advances city state using high-fidelity numerical physics."""
@@ -228,7 +237,12 @@ class CityStateManager:
         cloned.pump_overrides = copy.deepcopy(self.pump_overrides)
         cloned.manual_roadblocks = copy.deepcopy(self.manual_roadblocks)
         
-        # Deep copy overland surface water
+        # Deep copy overland surface water and terrain state
+        if hasattr(self, "base_dem"):
+            cloned.base_dem = self.base_dem.copy()
+            cloned.city.grid.dem[:] = self.city.grid.dem
+            cloned.hydro.overland.dem[:] = self.hydro.overland.dem
+
         cloned.hydro.overland.h = self.hydro.overland.h.copy()
         cloned.hydro.infiltration.cumulative_infiltrated_m = self.hydro.infiltration.cumulative_infiltrated_m.copy()
         

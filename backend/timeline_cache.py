@@ -93,6 +93,8 @@ class TimelineTrajectoryCache:
         engine_mode: str = "world_model",
         branch_id: str = "baseline",
         step_dt_s: float = 300.0, # 5-minute increments
+        sandbag_edges: Optional[List[List[str]]] = None,
+        manual_roadblocks: Optional[List[List[str]]] = None,
     ) -> Dict[str, Any]:
         """
         Executes a complete multi-step storm trajectory rollout and caches all frames.
@@ -103,17 +105,38 @@ class TimelineTrajectoryCache:
             "drainage_capacity_factor": drainage_capacity_factor,
             "pump_overrides": pump_overrides or {},
             "engine_mode": engine_mode,
+            "sandbag_edges": sandbag_edges or [],
+            "manual_roadblocks": manual_roadblocks or [],
         }
         
         # Reset state manager
         state_mgr.current_time_s = 0.0
         state_mgr.step_idx = 0
         state_mgr.hydro.reset()
+        if hasattr(state_mgr, "reset_terrain_barriers"):
+            state_mgr.reset_terrain_barriers()
         state_mgr.active_rainfall_mm_hr = rainfall_mm_hr
         state_mgr.drainage_capacity_factor = drainage_capacity_factor
         state_mgr.pump_overrides = pump_overrides or {}
         state_mgr.manual_roadblocks.clear()
         state_mgr.history_scalars.clear()
+
+        # Apply Physical Sandbag Barriers (raises local DEM) & Roadblocks
+        if sandbag_edges:
+            for pair in sandbag_edges:
+                if len(pair) == 2:
+                    u, v = pair[0], pair[1]
+                    cells = state_mgr.dyn_roads.edge_sample_cells.get((u, v), [])
+                    if not cells:
+                        cells = state_mgr.dyn_roads.edge_sample_cells.get((v, u), [])
+                    if cells:
+                        state_mgr.inject_intervention({
+                            "flood_barrier": {"cells": cells, "height_m": 0.85}
+                        })
+        if manual_roadblocks:
+            for pair in manual_roadblocks:
+                if len(pair) == 2:
+                    state_mgr.inject_intervention({"block_road": (pair[0], pair[1])})
 
         total_sim_seconds = duration_hours * 3600.0
         n_steps = int(np.ceil(total_sim_seconds / step_dt_s))

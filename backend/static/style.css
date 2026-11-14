@@ -616,6 +616,7 @@ input[type="range"] {
 .color-facility-hosp { background-color: #ef4444; }
 .color-facility-sub { background-color: #00f0ff; }
 .color-facility-pump { background-color: #10b981; }
+.color-sandbag { background-color: #d97706; border: 1px dashed #f59e0b; }
 
 .layer-toggles {
     display: flex;
@@ -758,5 +759,54 @@ canvas[id^="chart"] {
     font-size: 11px;
     font-family: var(--font-mono);
     color: var(--text-secondary);
+}
+
+/* Click-to-Intervene Toolbar & Toast */
+.cam-btn.active-sandbag {
+    background-color: rgba(217, 119, 6, 0.25) !important;
+    color: #f59e0b !important;
+    border-color: #f59e0b !important;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    font-weight: 700;
+}
+
+.cam-btn.active-pump {
+    background-color: rgba(16, 185, 129, 0.25) !important;
+    color: #10b981 !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    font-weight: 700;
+}
+
+.intervention-toast {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(0);
+    background: rgba(15, 23, 42, 0.94);
+    border: 1px solid #f59e0b;
+    box-shadow: 0 6px 24px rgba(245, 158, 11, 0.35);
+    backdrop-filter: blur(10px);
+    color: #f8fafc;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 100;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.intervention-toast.hidden {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-18px);
+    pointer-events: none;
+}
+
+.intervene-cursor {
+    cursor: crosshair !important;
 }
 

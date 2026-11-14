@@ -100,6 +100,9 @@ class ScenarioStartRequest(BaseModel):
     drainage_capacity_factor: float = Field(1.0, ge=0.0, le=1.0)
     pump_overrides: Optional[Dict[str, float]] = None
     engine_mode: str = Field("world_model", description="'world_model' or 'physics'")
+    branch_id: str = "baseline"
+    sandbag_edges: Optional[List[List[str]]] = None
+    manual_roadblocks: Optional[List[List[str]]] = None
 
 
 class StepRequest(BaseModel):
@@ -309,7 +312,11 @@ def get_city_geo_bounds():
 @app.post("/api/simulation/run_scenario")
 def run_scenario(req: ScenarioStartRequest):
     init_engine()
-    root_state = branch_engine.branches.get("baseline")
+    b_id = req.branch_id or "baseline"
+    if b_id not in branch_engine.branches:
+        branch_engine.branches[b_id] = branch_engine.branches["baseline"].clone()
+
+    root_state = branch_engine.branches[b_id]
     summary = timeline_cache.run_full_scenario(
         state_mgr=root_state,
         rainfall_mm_hr=req.rainfall_mm_hr,
@@ -317,8 +324,10 @@ def run_scenario(req: ScenarioStartRequest):
         drainage_capacity_factor=req.drainage_capacity_factor,
         pump_overrides=req.pump_overrides,
         engine_mode=req.engine_mode,
-        branch_id="baseline",
-        step_dt_s=300.0
+        branch_id=b_id,
+        step_dt_s=300.0,
+        sandbag_edges=req.sandbag_edges,
+        manual_roadblocks=req.manual_roadblocks
     )
     return summary
 
@@ -414,6 +423,65 @@ def inject_intervention(req: InterventionRequest):
         
     state.inject_intervention(interv)
     return {"status": "injected", "branch_id": req.branch_id, "interventions": interv}
+
+
+class ToggleSandbagRequest(BaseModel):
+    u: str
+    v: str
+    branch_id: str = "baseline"
+    active: bool = True
+
+
+class TogglePumpRequest(BaseModel):
+    pump_id: str
+    throttle: float
+    branch_id: str = "baseline"
+
+
+@app.post("/api/simulation/intervene/toggle_sandbag")
+def toggle_sandbag(req: ToggleSandbagRequest):
+    init_engine()
+    if req.branch_id not in branch_engine.branches:
+        branch_engine.branches[req.branch_id] = branch_engine.branches["baseline"].clone()
+    state = branch_engine.branches[req.branch_id]
+    
+    cells = state.dyn_roads.edge_sample_cells.get((req.u, req.v), [])
+    if not cells:
+        cells = state.dyn_roads.edge_sample_cells.get((req.v, req.u), [])
+        
+    if req.active:
+        if cells:
+            state.inject_intervention({"flood_barrier": {"cells": cells, "height_m": 0.85}})
+        state.inject_intervention({"block_road": (req.u, req.v)})
+        status = "sandbag_deployed"
+    else:
+        if hasattr(state, "reset_terrain_barriers"):
+            state.reset_terrain_barriers()
+        state.inject_intervention({"unblock_road": (req.u, req.v)})
+        status = "sandbag_removed"
+        
+    return {
+        "status": status,
+        "branch_id": req.branch_id,
+        "edge": [req.u, req.v],
+        "cells_affected": len(cells)
+    }
+
+
+@app.post("/api/simulation/intervene/toggle_pump")
+def toggle_pump(req: TogglePumpRequest):
+    init_engine()
+    if req.branch_id not in branch_engine.branches:
+        branch_engine.branches[req.branch_id] = branch_engine.branches["baseline"].clone()
+    state = branch_engine.branches[req.branch_id]
+    
+    state.inject_intervention({"pump_overrides": {req.pump_id: float(req.throttle)}})
+    return {
+        "status": "pump_updated",
+        "branch_id": req.branch_id,
+        "pump_id": req.pump_id,
+        "throttle": req.throttle
+    }
 
 
 @app.post("/api/simulation/predict_uncertainty")
