@@ -51,6 +51,13 @@ const state = {
     streetlights: [],
     streetlightLocalLights: [],
     streetlightLensMat: null,
+    streetlightPoolMat: null,
+    streetlightPools: [],
+
+    // Vehicle Headlights & Projected Beams
+    headlightLensMat: null,
+    taillightLensMat: null,
+    headlightBeamMat: null,
 
     // Environmental Atmospheric Weather & Lighting System
     weatherMode: "auto", // "auto", "day", "night"
@@ -232,78 +239,78 @@ function interpolateHexColor(hex1, hex2, t) {
 const ARCH_PALETTES = {
     azure_glass: {
         name: "Azure Glass Curtain Wall",
-        baseBg: "#0f172a",
-        spandrel: "#334155",
-        spandrelShadow: "#1e293b",
-        mullion: "#475569",
-        mullionShadow: "#0f172a",
-        winDark: "#090d16",
-        winReflect: "#1e293b",
-        lights: ["#fef3c7", "#fde68a", "#e2e8f0"],
-        roughness: 0.35,
-        metalness: 0.65,
-        crownColor: 0x334155,
-        baseEmissive: 0.06
+        baseBg: "#e2e8f0",          // Crisp light aluminum panel
+        spandrel: "#38bdf8",        // Vivid sky-blue architectural glass spandrel
+        spandrelShadow: "#0284c7",  // Deep azure shadow
+        mullion: "#ffffff",         // Pure white architectural fins
+        mullionShadow: "#cbd5e1",   // Light silver bevel
+        winDark: "#1e3a8a",         // Rich deep cobalt glass pane
+        winReflect: "#60a5fa",      // Bright daytime sky reflection
+        lights: ["#fef08a", "#fef9c3", "#ffffff", "#fed7aa", "#bae6fd"],
+        roughness: 0.22,
+        metalness: 0.55,
+        crownColor: 0x38bdf8,
+        baseEmissive: 1.0
     },
     bronze_glass: {
         name: "Warm Bronze & Champagne High-Rise",
-        baseBg: "#1c1917",
-        spandrel: "#44403c",
-        spandrelShadow: "#1c1917",
-        mullion: "#57534e",
-        mullionShadow: "#0c0a09",
-        winDark: "#0c0a09",
-        winReflect: "#292524",
-        lights: ["#fef3c7", "#fed7aa", "#e2e8f0"],
-        roughness: 0.38,
-        metalness: 0.60,
-        crownColor: 0x44403c,
-        baseEmissive: 0.05
+        baseBg: "#fef3c7",          // Warm light champagne stone
+        spandrel: "#d97706",        // Warm copper / amber architectural spandrel
+        spandrelShadow: "#b45309",  // Deep bronze shadow
+        mullion: "#f59e0b",         // Warm golden structural rib
+        mullionShadow: "#78350f",   // Warm amber bevel
+        winDark: "#451a03",         // Deep warm bronze glass
+        winReflect: "#fbbf24",      // Reflective warm champagne glass
+        lights: ["#fffbeb", "#fef08a", "#fed7aa", "#ffffff"],
+        roughness: 0.25,
+        metalness: 0.50,
+        crownColor: 0xf59e0b,
+        baseEmissive: 1.0
     },
     silver_tower: {
         name: "Silver & Platinum Modern Tower",
-        baseBg: "#1e293b",
-        spandrel: "#334155",
-        spandrelShadow: "#0f172a",
-        mullion: "#475569",
-        mullionShadow: "#020617",
-        winDark: "#090d16",
-        winReflect: "#1e293b",
-        lights: ["#fef9c3", "#e2e8f0", "#ffffff"],
-        roughness: 0.40,
-        metalness: 0.55,
-        crownColor: 0x334155,
-        baseEmissive: 0.05
+        baseBg: "#f8fafc",          // Crisp modern white architectural concrete
+        spandrel: "#64748b",        // Modern architectural slate contrast band
+        spandrelShadow: "#475569",  // Deep bevel
+        mullion: "#ffffff",         // Bright white vertical mullions
+        mullionShadow: "#e2e8f0",   // Crisp silver bevel
+        winDark: "#1e293b",         // Clean contrast glass
+        winReflect: "#93c5fd",      // Crisp ice-blue reflection
+        lights: ["#fef9c3", "#ffffff", "#e2e8f0", "#fef08a"],
+        roughness: 0.26,
+        metalness: 0.45,
+        crownColor: 0xf8fafc,
+        baseEmissive: 1.0
     },
     emerald_glass: {
         name: "Emerald Low-E Eco-Tower",
-        baseBg: "#06221f",
-        spandrel: "#134e4a",
-        spandrelShadow: "#042f2e",
-        mullion: "#0f766e",
-        mullionShadow: "#021a19",
-        winDark: "#021a19",
-        winReflect: "#042f2e",
-        lights: ["#fef3c7", "#d1fae5", "#e2e8f0"],
-        roughness: 0.36,
-        metalness: 0.60,
-        crownColor: 0x134e4a,
-        baseEmissive: 0.05
+        baseBg: "#ecfdf5",          // Pale seafoam architectural cladding
+        spandrel: "#10b981",        // Vibrant emerald glass band
+        spandrelShadow: "#059669",  // Rich forest shadow
+        mullion: "#ffffff",         // Pure white architectural fins
+        mullionShadow: "#a7f3d0",   // Pale mint bevel
+        winDark: "#064e3b",         // Deep emerald tint
+        winReflect: "#34d399",      // Reflective mint glass
+        lights: ["#fef9c3", "#d1fae5", "#ffffff", "#fef08a"],
+        roughness: 0.24,
+        metalness: 0.55,
+        crownColor: 0x10b981,
+        baseEmissive: 1.0
     },
     cobalt_tower: {
         name: "Cobalt Prestige Navy Tower",
-        baseBg: "#0f172a",
-        spandrel: "#1e3a8a",
-        spandrelShadow: "#0c1b33",
-        mullion: "#3b82f6",
-        mullionShadow: "#0f172a",
-        winDark: "#090d16",
-        winReflect: "#1e293b",
-        lights: ["#fef3c7", "#bfdbfe", "#e2e8f0"],
-        roughness: 0.35,
-        metalness: 0.65,
-        crownColor: 0x1e3a8a,
-        baseEmissive: 0.06
+        baseBg: "#eff6ff",          // Crisp white architectural framework
+        spandrel: "#2563eb",        // Bold royal blue spandrel
+        spandrelShadow: "#1d4ed8",  // Vivid cobalt shadow
+        mullion: "#ffffff",         // Bright white vertical fins
+        mullionShadow: "#bfdbfe",   // Light sapphire bevel
+        winDark: "#172554",         // Deep sapphire glass
+        winReflect: "#3b82f6",      // Vivid sky reflection
+        lights: ["#fef08a", "#bfdbfe", "#ffffff", "#fef9c3"],
+        roughness: 0.22,
+        metalness: 0.55,
+        crownColor: 0x2563eb,
+        baseEmissive: 1.0
     }
 };
 
@@ -417,8 +424,8 @@ function createTerracottaBrickTexture() {
     canvas.height = 512;
     const ctx = canvas.getContext("2d");
 
-    // Mortar joint background
-    ctx.fillStyle = "#d6d3d1";
+    // Pure white mortar joint background
+    ctx.fillStyle = "#f8fafc";
     ctx.fillRect(0, 0, 512, 512);
 
     const floors = 12;
@@ -426,15 +433,15 @@ function createTerracottaBrickTexture() {
     const bayW = 512 / bays;
     const floorH = 512 / floors;
 
-    const brickColors = ["#c2410c", "#9a3412", "#ea580c", "#b91c1c", "#7c2d12"];
+    const brickColors = ["#dc2626", "#ea580c", "#c2410c", "#b91c1c", "#f97316", "#e11d48"];
 
     for (let f = 0; f < floors; f++) {
         const y = f * floorH;
 
-        // Decorative stone cornice / belt course
-        ctx.fillStyle = "#f5f5f4";
+        // Decorative white stone cornice / belt course
+        ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, y + floorH - 8, 512, 6);
-        ctx.fillStyle = "#78716c";
+        ctx.fillStyle = "#cbd5e1";
         ctx.fillRect(0, y + floorH - 2, 512, 2);
 
         // Brick courses
@@ -452,7 +459,7 @@ function createTerracottaBrickTexture() {
             }
         }
 
-        // Punched residential windows with stone lintels and sills
+        // Punched residential windows with white stone lintels and sills
         for (let b = 0; b < bays; b++) {
             const x = b * bayW;
             const winX = x + 10;
@@ -461,36 +468,36 @@ function createTerracottaBrickTexture() {
             const winH = floorH - 24;
 
             // Stone lintel (top)
-            ctx.fillStyle = "#f8fafc";
-            ctx.fillRect(winX - 2, winY - 3, winW + 4, 3);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(winX - 3, winY - 3, winW + 6, 3);
             // Stone sill (bottom)
-            ctx.fillStyle = "#e2e8f0";
+            ctx.fillStyle = "#f1f5f9";
             ctx.fillRect(winX - 3, winY + winH, winW + 6, 3);
 
-            // Dark window frame
-            ctx.fillStyle = "#292524";
-            ctx.fillRect(winX, winY, winW, winH);
+            // Crisp white window frame
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(winX - 1, winY, winW + 2, winH);
 
             const hash = Math.sin(f * 37.1 + b * 61.3) * 10000;
             const rand = hash - Math.floor(hash);
 
-            if (rand > 0.40) {
+            if (rand > 0.35) {
                 const grad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
-                if (rand > 0.75) {
-                    grad.addColorStop(0, "#fef3c7");
-                    grad.addColorStop(1, "#fde68a");
+                if (rand > 0.70) {
+                    grad.addColorStop(0, "#fef08a");
+                    grad.addColorStop(1, "#fed7aa");
                 } else {
-                    grad.addColorStop(0, "#fed7aa");
-                    grad.addColorStop(1, "#fb923c");
+                    grad.addColorStop(0, "#bae6fd");
+                    grad.addColorStop(1, "#60a5fa");
                 }
                 ctx.fillStyle = grad;
             } else {
-                ctx.fillStyle = "#1c1917";
+                ctx.fillStyle = "#1e293b";
             }
             ctx.fillRect(winX + 2, winY + 2, winW - 4, winH - 4);
 
             // Window muntins (crossbars)
-            ctx.fillStyle = "#44403c";
+            ctx.fillStyle = "#ffffff";
             ctx.fillRect(winX + winW / 2 - 1, winY + 2, 2, winH - 4);
             ctx.fillRect(winX + 2, winY + winH / 2 - 1, winW - 4, 2);
         }
@@ -528,8 +535,8 @@ function createTerracottaBrickEmissiveTexture() {
             const hash = Math.sin(f * 37.1 + b * 61.3) * 10000;
             const rand = hash - Math.floor(hash);
 
-            if (rand > 0.40) {
-                ctx.fillStyle = (rand > 0.75) ? "#fef3c7" : "#fed7aa";
+            if (rand > 0.35) {
+                ctx.fillStyle = (rand > 0.70) ? "#fef08a" : "#fed7aa";
                 ctx.fillRect(winX + 2, winY + 2, winW - 4, winH - 4);
             }
         }
@@ -541,14 +548,297 @@ function createTerracottaBrickEmissiveTexture() {
     return tex;
 }
 
+function createMediterraneanStuccoTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    // Sunny warm cream / sandstone stucco base
+    ctx.fillStyle = "#fef3c7";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const floors = 10;
+    const bays = 8;
+    const bayW = 512 / bays;
+    const floorH = 512 / floors;
+
+    for (let f = 0; f < floors; f++) {
+        const y = f * floorH;
+
+        // Terracotta decorative belt course / trim
+        ctx.fillStyle = "#ea580c";
+        ctx.fillRect(0, y, 512, 5);
+        ctx.fillStyle = "#c2410c";
+        ctx.fillRect(0, y + 4, 512, 2);
+
+        // Quoin stone corner trim on borders
+        ctx.fillStyle = "#fed7aa";
+        ctx.fillRect(0, y + 6, 12, floorH - 6);
+        ctx.fillRect(500, y + 6, 12, floorH - 6);
+
+        for (let b = 0; b < bays; b++) {
+            const x = b * bayW;
+            const winX = x + 12;
+            const winY = y + 8;
+            const winW = bayW - 24;
+            const winH = floorH - 18;
+
+            // Arched window surround in crisp white
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(winX - 3, winY - 3, winW + 6, winH + 6);
+
+            // Spanish terracotta arch lintel
+            ctx.fillStyle = "#c2410c";
+            ctx.fillRect(winX - 2, winY - 5, winW + 4, 3);
+
+            // Window interior pane
+            const hash = Math.sin(f * 41.3 + b * 27.7) * 10000;
+            const rand = hash - Math.floor(hash);
+
+            if (rand > 0.35) {
+                const grad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+                if (rand > 0.70) {
+                    grad.addColorStop(0, "#fef08a");
+                    grad.addColorStop(1, "#fed7aa");
+                } else {
+                    grad.addColorStop(0, "#bae6fd");
+                    grad.addColorStop(1, "#60a5fa");
+                }
+                ctx.fillStyle = grad;
+            } else {
+                ctx.fillStyle = "#334155";
+            }
+            ctx.fillRect(winX, winY, winW, winH);
+
+            // Window division crossbar
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(winX + winW / 2 - 1, winY, 2, winH);
+            ctx.fillRect(winX, winY + winH / 2 - 1, winW, 2);
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createMediterraneanEmissiveTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const floors = 10;
+    const bays = 8;
+    const bayW = 512 / bays;
+    const floorH = 512 / floors;
+
+    for (let f = 0; f < floors; f++) {
+        const y = f * floorH;
+        for (let b = 0; b < bays; b++) {
+            const x = b * bayW;
+            const winX = x + 12;
+            const winY = y + 8;
+            const winW = bayW - 24;
+            const winH = floorH - 18;
+
+            const hash = Math.sin(f * 41.3 + b * 27.7) * 10000;
+            const rand = hash - Math.floor(hash);
+
+            if (rand > 0.35) {
+                ctx.fillStyle = (rand > 0.70) ? "#fef08a" : "#fed7aa";
+                ctx.fillRect(winX, winY, winW, winH);
+            }
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createNordicSageTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    // Contemporary Scandinavian sage green
+    ctx.fillStyle = "#dcfce7";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const floors = 8;
+    const bays = 8;
+    const bayW = 512 / bays;
+    const floorH = 512 / floors;
+
+    for (let f = 0; f < floors; f++) {
+        const y = f * floorH;
+
+        // Alternating warm cedar timber horizontal siding bands
+        ctx.fillStyle = (f % 2 === 0) ? "#65a30d" : "#84cc16";
+        ctx.fillRect(0, y, 512, floorH * 0.45);
+
+        // Warm cedar timber slat accent on lower half
+        for (let sy = y + floorH * 0.45; sy < y + floorH; sy += 6) {
+            ctx.fillStyle = "#b45309";
+            ctx.fillRect(0, sy, 512, 4);
+            ctx.fillStyle = "#78350f";
+            ctx.fillRect(0, sy + 4, 512, 2);
+        }
+
+        // Crisp white contemporary corner trims
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, y, 6, floorH);
+        ctx.fillRect(506, y, 6, floorH);
+
+        for (let b = 0; b < bays; b++) {
+            const x = b * bayW;
+            const winX = x + 14;
+            const winY = y + 8;
+            const winW = bayW - 28;
+            const winH = floorH - 18;
+
+            // Crisp white architectural frame
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(winX - 2, winY - 2, winW + 4, winH + 4);
+
+            const hash = Math.sin(f * 53.1 + b * 19.3) * 10000;
+            const rand = hash - Math.floor(hash);
+
+            if (rand > 0.38) {
+                const grad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+                if (rand > 0.72) {
+                    grad.addColorStop(0, "#fef9c3");
+                    grad.addColorStop(1, "#fde047");
+                } else {
+                    grad.addColorStop(0, "#e0f2fe");
+                    grad.addColorStop(1, "#38bdf8");
+                }
+                ctx.fillStyle = grad;
+            } else {
+                ctx.fillStyle = "#1e293b";
+            }
+            ctx.fillRect(winX, winY, winW, winH);
+
+            // Contemporary slim muntin
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(winX + winW * 0.65, winY, 1.5, winH);
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createNordicSageEmissiveTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const floors = 8;
+    const bays = 8;
+    const bayW = 512 / bays;
+    const floorH = 512 / floors;
+
+    for (let f = 0; f < floors; f++) {
+        const y = f * floorH;
+        for (let b = 0; b < bays; b++) {
+            const x = b * bayW;
+            const winX = x + 14;
+            const winY = y + 8;
+            const winW = bayW - 28;
+            const winH = floorH - 18;
+
+            const hash = Math.sin(f * 53.1 + b * 19.3) * 10000;
+            const rand = hash - Math.floor(hash);
+
+            if (rand > 0.38) {
+                ctx.fillStyle = (rand > 0.72) ? "#fef9c3" : "#fed7aa";
+                ctx.fillRect(winX, winY, winW, winH);
+            }
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+function createStreetlightPoolTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0, 0, 256, 256);
+
+    const grad = ctx.createRadialGradient(128, 128, 8, 128, 128, 124);
+    grad.addColorStop(0.0, "rgba(254, 240, 138, 0.90)");
+    grad.addColorStop(0.25, "rgba(253, 230, 138, 0.60)");
+    grad.addColorStop(0.55, "rgba(245, 158, 11, 0.22)");
+    grad.addColorStop(0.85, "rgba(217, 119, 6, 0.05)");
+    grad.addColorStop(1.0, "rgba(0, 0, 0, 0.0)");
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(128, 128, 124, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
+
+function createHeadlightBeamTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0, 0, 256, 256);
+
+    // Forward beam projection: two cones merging into wide road beam
+    const grad = ctx.createLinearGradient(128, 0, 128, 256);
+    grad.addColorStop(0.0, "rgba(255, 250, 220, 0.95)");
+    grad.addColorStop(0.15, "rgba(254, 240, 138, 0.70)");
+    grad.addColorStop(0.50, "rgba(253, 230, 138, 0.35)");
+    grad.addColorStop(0.85, "rgba(245, 158, 11, 0.10)");
+    grad.addColorStop(1.0, "rgba(245, 158, 11, 0.0)");
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(98, 4);
+    ctx.lineTo(158, 4);
+    ctx.lineTo(236, 252);
+    ctx.lineTo(20, 252);
+    ctx.closePath();
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
+
 function createLimestoneTexture() {
     const canvas = document.createElement("canvas");
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext("2d");
 
-    // Natural cream French limestone base
-    ctx.fillStyle = "#f5f5f4";
+    // Natural warm ivory & cream French limestone base
+    ctx.fillStyle = "#fefce8";
     ctx.fillRect(0, 0, 512, 512);
 
     const floors = 14;
@@ -559,20 +849,20 @@ function createLimestoneTexture() {
     for (let f = 0; f < floors; f++) {
         const y = f * floorH;
 
-        // Classical stone cornice / entablature
-        ctx.fillStyle = "#e7e5e4";
-        ctx.fillRect(0, y, 512, 5);
-        ctx.fillStyle = "#a8a29e";
-        ctx.fillRect(0, y + 4, 512, 1);
+        // Classical white stone cornice / entablature
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, y, 512, 6);
+        ctx.fillStyle = "#fef08a";
+        ctx.fillRect(0, y + 5, 512, 1);
 
         for (let b = 0; b < bays; b++) {
             const x = b * bayW;
 
             // Fluted stone pilasters between window bays
-            ctx.fillStyle = "#d6d3d1";
-            ctx.fillRect(x, y + 5, 4, floorH - 5);
-            ctx.fillStyle = "#f5f5f4";
-            ctx.fillRect(x + 2, y + 5, 2, floorH - 5);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(x, y + 6, 4, floorH - 6);
+            ctx.fillStyle = "#fef9c3";
+            ctx.fillRect(x + 2, y + 6, 2, floorH - 6);
 
             // Punch windows with bronze trim
             const winX = x + 7;
@@ -580,24 +870,24 @@ function createLimestoneTexture() {
             const winW = bayW - 14;
             const winH = floorH - 16;
 
-            ctx.fillStyle = "#44403c";
+            ctx.fillStyle = "#d97706";
             ctx.fillRect(winX, winY, winW, winH);
 
             const hash = Math.sin(f * 31.7 + b * 53.9) * 10000;
             const rand = hash - Math.floor(hash);
 
-            if (rand > 0.42) {
+            if (rand > 0.35) {
                 const grad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
-                if (rand > 0.78) {
-                    grad.addColorStop(0, "#fef3c7");
-                    grad.addColorStop(1, "#fde68a");
+                if (rand > 0.70) {
+                    grad.addColorStop(0, "#fef08a");
+                    grad.addColorStop(1, "#fed7aa");
                 } else {
-                    grad.addColorStop(0, "#e0f2fe");
-                    grad.addColorStop(1, "#93c5fd");
+                    grad.addColorStop(0, "#bae6fd");
+                    grad.addColorStop(1, "#60a5fa");
                 }
                 ctx.fillStyle = grad;
             } else {
-                ctx.fillStyle = "#1c1917";
+                ctx.fillStyle = "#1e293b";
             }
             ctx.fillRect(winX + 2, winY + 2, winW - 4, winH - 4);
         }
@@ -635,8 +925,8 @@ function createLimestoneEmissiveTexture() {
             const hash = Math.sin(f * 31.7 + b * 53.9) * 10000;
             const rand = hash - Math.floor(hash);
 
-            if (rand > 0.42) {
-                ctx.fillStyle = (rand > 0.78) ? "#fef3c7" : "#93c5fd";
+            if (rand > 0.35) {
+                ctx.fillStyle = (rand > 0.70) ? "#fef08a" : "#fed7aa";
                 ctx.fillRect(winX + 2, winY + 2, winW - 4, winH - 4);
             }
         }
@@ -654,28 +944,28 @@ function createElevatorCoreTexture() {
     canvas.height = 256;
     const ctx = canvas.getContext("2d");
 
-    // Dark graphite metallic core wall
-    ctx.fillStyle = "#1e293b";
+    // Modern light architectural metallic core wall
+    ctx.fillStyle = "#cbd5e1";
     ctx.fillRect(0, 0, 256, 256);
 
-    // Architectural horizontal acoustic louvers
+    // Architectural horizontal acoustic louvers in silver aluminum
     for (let y = 16; y < 180; y += 8) {
-        ctx.fillStyle = "#0f172a";
+        ctx.fillStyle = "#f1f5f9";
         ctx.fillRect(16, y, 224, 4);
-        ctx.fillStyle = "#475569";
+        ctx.fillStyle = "#94a3b8";
         ctx.fillRect(16, y + 4, 224, 2);
     }
 
-    // Heavy steel mechanical access service door
-    ctx.fillStyle = "#0f172a";
+    // Heavy mechanical access service door
+    ctx.fillStyle = "#e2e8f0";
     ctx.fillRect(96, 185, 64, 71);
-    ctx.fillStyle = "#334155";
+    ctx.fillStyle = "#94a3b8";
     ctx.fillRect(99, 188, 58, 68);
 
     // Door handle & caution signage
     ctx.fillStyle = "#facc15";
     ctx.fillRect(116, 205, 24, 10);
-    ctx.fillStyle = "#94a3b8";
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(150, 225, 4, 8);
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -698,16 +988,16 @@ function createLobbyGlassTexture() {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 256, 128);
 
-    // Structural steel framing
-    ctx.fillStyle = "#1e293b";
+    // Modern white architectural framing
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, 256, 8);
     ctx.fillRect(0, 120, 256, 8);
 
     // Revolving doors & vestibule mullions
     for (let x = 0; x <= 256; x += 32) {
-        ctx.fillStyle = "#0f172a";
+        ctx.fillStyle = "#e2e8f0";
         ctx.fillRect(x, 0, 4, 128);
-        ctx.fillStyle = "#cbd5e1";
+        ctx.fillStyle = "#ffffff";
         ctx.fillRect(x + 1, 0, 2, 128);
     }
 
@@ -737,25 +1027,30 @@ function createIndustrialTexture() {
     canvas.height = 512;
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#1e293b";
+    // Clean modern light silver-gray corrugated panels
+    ctx.fillStyle = "#e2e8f0";
     ctx.fillRect(0, 0, 512, 512);
 
     for (let x = 0; x < 512; x += 12) {
-        ctx.fillStyle = (x % 24 === 0) ? "#334155" : "#0f172a";
+        ctx.fillStyle = (x % 24 === 0) ? "#f8fafc" : "#cbd5e1";
         ctx.fillRect(x, 0, 6, 512);
     }
 
+    // Modern industrial loading bays with roll-up doors
     for (let b = 24; b < 480; b += 110) {
-        ctx.fillStyle = "#475569";
+        ctx.fillStyle = "#ffffff";
         ctx.fillRect(b, 320, 80, 180);
         for (let sy = 328; sy < 490; sy += 10) {
-            ctx.fillStyle = "#1e293b";
+            ctx.fillStyle = "#cbd5e1";
             ctx.fillRect(b + 4, sy, 72, 3);
         }
     }
 
-    ctx.fillStyle = "#0284c7";
-    ctx.fillRect(16, 60, 480, 36);
+    // Safety yellow & modern blue corporate brand stripes
+    ctx.fillStyle = "#facc15";
+    ctx.fillRect(16, 50, 480, 16);
+    ctx.fillStyle = "#2563eb";
+    ctx.fillRect(16, 68, 480, 28);
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;
@@ -769,19 +1064,42 @@ function createRoofTexture() {
     canvas.height = 256;
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#1e293b";
+    // Clean light architectural roof gravel & paver base
+    ctx.fillStyle = "#cbd5e1";
     ctx.fillRect(0, 0, 256, 256);
 
-    for (let i = 0; i < 900; i++) {
-        const rx = Math.random() * 256;
-        const ry = Math.random() * 256;
-        ctx.fillStyle = Math.random() > 0.5 ? "#334155" : "#0f172a";
-        ctx.fillRect(rx, ry, 2, 2);
+    // Maintenance walkway pavers in light stone
+    ctx.fillStyle = "#f1f5f9";
+    ctx.fillRect(16, 116, 224, 24);
+    ctx.fillRect(116, 16, 24, 224);
+
+    // Paver joint lines
+    ctx.strokeStyle = "#94a3b8";
+    ctx.lineWidth = 1;
+    for (let p = 16; p <= 240; p += 16) {
+        ctx.beginPath();
+        ctx.moveTo(p, 116);
+        ctx.lineTo(p, 140);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(116, p);
+        ctx.lineTo(140, p);
+        ctx.stroke();
     }
 
-    ctx.strokeStyle = "#0f172a";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(32, 32, 192, 192);
+    // Border parapet coping stone
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, 248, 248);
+
+    // Subtle roof gravel texture
+    for (let i = 0; i < 600; i++) {
+        const rx = Math.random() * 256;
+        const ry = Math.random() * 256;
+        ctx.fillStyle = (Math.random() > 0.5) ? "#e2e8f0" : "#94a3b8";
+        ctx.fillRect(rx, ry, 2, 2);
+    }
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;
@@ -1576,26 +1894,26 @@ function buildBuildings3D() {
     const helipadTex = createHelipadTexture();
     const roofMat = new THREE.MeshStandardMaterial({
         map: roofTex,
-        roughness: 0.85,
-        metalness: 0.10
+        roughness: 0.65,
+        metalness: 0.15
     });
     const helipadMat = new THREE.MeshStandardMaterial({
         map: helipadTex,
-        roughness: 0.45,
-        metalness: 0.20
+        roughness: 0.35,
+        metalness: 0.30
     });
 
     // Central Elevator & Mechanical Penthouse Core Materials ("cors")
     const coreTex = createElevatorCoreTexture();
     const coreWallMat = new THREE.MeshStandardMaterial({
         map: coreTex,
-        roughness: 0.50,
-        metalness: 0.65
+        roughness: 0.40,
+        metalness: 0.45
     });
     const coreRoofMat = new THREE.MeshStandardMaterial({
-        color: 0x0f172a,
-        roughness: 0.90,
-        metalness: 0.10
+        color: 0xe2e8f0,
+        roughness: 0.60,
+        metalness: 0.20
     });
     const coreMaterials = [coreWallMat, coreWallMat, coreRoofMat, coreRoofMat, coreWallMat, coreWallMat];
 
@@ -1605,11 +1923,11 @@ function buildBuildings3D() {
         map: lobbyTex,
         emissiveMap: lobbyTex,
         emissive: new THREE.Color(0xffffff),
-        emissiveIntensity: 0.35,
-        roughness: 0.20,
-        metalness: 0.40
+        emissiveIntensity: 0.75,
+        roughness: 0.15,
+        metalness: 0.45
     });
-    lobbyGlassMat.userData = { baseEmissive: 0.35 };
+    lobbyGlassMat.userData = { baseEmissive: 1.0 };
 
     // Initialize 5 Distinct Curtain-Glass Architectural Themes
     const glassThemes = {};
@@ -1620,70 +1938,109 @@ function buildBuildings3D() {
             map: tex,
             emissiveMap: emTex,
             emissive: new THREE.Color(0xffffff),
-            emissiveIntensity: conf.baseEmissive,
+            emissiveIntensity: conf.baseEmissive || 1.0,
             roughness: conf.roughness,
             metalness: conf.metalness
         });
-        wallMat.userData = { baseEmissive: conf.baseEmissive };
+        wallMat.userData = { baseEmissive: conf.baseEmissive || 1.0 };
         glassThemes[key] = {
             materials: [wallMat, wallMat, roofMat, roofMat, wallMat, wallMat],
             crownColor: conf.crownColor,
             wallMat: wallMat,
-            baseEmissive: conf.baseEmissive
+            baseEmissive: conf.baseEmissive || 1.0
         };
     }
 
-    // Terracotta & Warm Red Brick Residential Theme
+    // 1. Terracotta & Warm Red Brick Residential Theme
     const terraTex = createTerracottaBrickTexture();
     const terraEmTex = createTerracottaBrickEmissiveTexture();
     const terraWallMat = new THREE.MeshStandardMaterial({
         map: terraTex,
         emissiveMap: terraEmTex,
         emissive: new THREE.Color(0xffffff),
-        emissiveIntensity: 0.20,
-        roughness: 0.78,
-        metalness: 0.08
+        emissiveIntensity: 1.0,
+        roughness: 0.65,
+        metalness: 0.10
     });
-    terraWallMat.userData = { baseEmissive: 0.20 };
+    terraWallMat.userData = { baseEmissive: 1.0 };
     const terracottaTheme = {
         materials: [terraWallMat, terraWallMat, roofMat, roofMat, terraWallMat, terraWallMat],
-        crownColor: 0xfdba74,
+        crownColor: 0xf97316,
         wallMat: terraWallMat,
-        baseEmissive: 0.20
+        baseEmissive: 1.0
     };
 
-    // French Limestone & Travertine Classical Stone Theme
+    // 2. Mediterranean Sandstone & Sunny Cream Stucco Theme
+    const medTex = createMediterraneanStuccoTexture();
+    const medEmTex = createMediterraneanEmissiveTexture();
+    const medWallMat = new THREE.MeshStandardMaterial({
+        map: medTex,
+        emissiveMap: medEmTex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 1.0,
+        roughness: 0.68,
+        metalness: 0.08
+    });
+    medWallMat.userData = { baseEmissive: 1.0 };
+    const mediterraneanTheme = {
+        materials: [medWallMat, medWallMat, roofMat, roofMat, medWallMat, medWallMat],
+        crownColor: 0xfbbf24,
+        wallMat: medWallMat,
+        baseEmissive: 1.0
+    };
+
+    // 3. Nordic Contemporary Sage Green & Cedar Wood Slat Theme
+    const nordicTex = createNordicSageTexture();
+    const nordicEmTex = createNordicSageEmissiveTexture();
+    const nordicWallMat = new THREE.MeshStandardMaterial({
+        map: nordicTex,
+        emissiveMap: nordicEmTex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 1.0,
+        roughness: 0.60,
+        metalness: 0.12
+    });
+    nordicWallMat.userData = { baseEmissive: 1.0 };
+    const nordicTheme = {
+        materials: [nordicWallMat, nordicWallMat, roofMat, roofMat, nordicWallMat, nordicWallMat],
+        crownColor: 0x84cc16,
+        wallMat: nordicWallMat,
+        baseEmissive: 1.0
+    };
+
+    // 4. French Classical Ivory Limestone & Travertine Theme
     const limeTex = createLimestoneTexture();
     const limeEmTex = createLimestoneEmissiveTexture();
     const limeWallMat = new THREE.MeshStandardMaterial({
         map: limeTex,
         emissiveMap: limeEmTex,
         emissive: new THREE.Color(0xffffff),
-        emissiveIntensity: 0.18,
-        roughness: 0.65,
+        emissiveIntensity: 1.0,
+        roughness: 0.55,
         metalness: 0.15
     });
-    limeWallMat.userData = { baseEmissive: 0.18 };
+    limeWallMat.userData = { baseEmissive: 1.0 };
     const limestoneTheme = {
         materials: [limeWallMat, limeWallMat, roofMat, roofMat, limeWallMat, limeWallMat],
-        crownColor: 0xfef3c7,
+        crownColor: 0xfef08a,
         wallMat: limeWallMat,
-        baseEmissive: 0.18
+        baseEmissive: 1.0
     };
 
-    // Industrial Logistics & Warehouse Theme
+    // 5. Clean Architectural Light Industrial Theme
     const indTex = createIndustrialTexture();
     const indWallMat = new THREE.MeshStandardMaterial({
         map: indTex,
-        roughness: 0.65,
-        metalness: 0.40
+        roughness: 0.50,
+        metalness: 0.35
     });
+    indWallMat.userData = { baseEmissive: 0.75 };
     const industrialMaterials = [indWallMat, indWallMat, roofMat, roofMat, indWallMat, indWallMat];
     const industrialTheme = {
         materials: industrialMaterials,
-        crownColor: 0x64748b,
+        crownColor: 0x3b82f6,
         wallMat: indWallMat,
-        baseEmissive: 0.10
+        baseEmissive: 0.75
     };
 
     state.footprints.forEach(bldg => {
@@ -1746,16 +2103,16 @@ function buildBuildings3D() {
             else selectedTheme = glassThemes.cobalt_tower;
         } else if (isCommercialMed) {
             isSkyscraper = (p.height_m >= 45.0);
-            if (rand < 0.36) selectedTheme = limestoneTheme;
-            else if (rand < 0.65) selectedTheme = glassThemes.silver_tower;
-            else if (rand < 0.84) selectedTheme = glassThemes.azure_glass;
+            if (rand < 0.30) selectedTheme = limestoneTheme;
+            else if (rand < 0.55) selectedTheme = glassThemes.silver_tower;
+            else if (rand < 0.78) selectedTheme = glassThemes.azure_glass;
             else selectedTheme = glassThemes.bronze_glass;
         } else if (isResidential) {
-            isSkyscraper = (p.height_m >= 50.0);
-            if (rand < 0.45) selectedTheme = terracottaTheme;
-            else if (rand < 0.75) selectedTheme = limestoneTheme;
-            else if (rand < 0.90) selectedTheme = glassThemes.silver_tower;
-            else selectedTheme = glassThemes.bronze_glass;
+            isSkyscraper = (p.height_m >= 55.0);
+            if (rand < 0.28) selectedTheme = terracottaTheme;
+            else if (rand < 0.54) selectedTheme = mediterraneanTheme;
+            else if (rand < 0.78) selectedTheme = nordicTheme;
+            else selectedTheme = limestoneTheme;
         } else {
             selectedTheme = industrialTheme;
         }
@@ -1786,7 +2143,7 @@ function buildBuildings3D() {
             const canopyD = 2.4;
             const canopyH = 0.32;
             const canopyGeom = new THREE.BoxGeometry(canopyW, canopyH, canopyD);
-            const canopyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.8 });
+            const canopyMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3, metalness: 0.7 });
             const canopy = new THREE.Mesh(canopyGeom, canopyMat);
             canopy.position.set(0, groundY + 2.7, d1 / 2.0 + canopyD / 2.0 - 0.2);
             bldgGroup.add(canopy);
@@ -1821,7 +2178,7 @@ function buildBuildings3D() {
             // Rooftop Parapet Border Wall
             const parapetH = 0.60;
             const parapetGeom = new THREE.BoxGeometry(w3 * 0.98, parapetH, d3 * 0.98);
-            const parapetMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+            const parapetMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 });
             const parapet = new THREE.Mesh(parapetGeom, parapetMat);
             parapet.position.y = roofTopY + parapetH / 2.0;
             bldgGroup.add(parapet);
@@ -1856,14 +2213,14 @@ function buildBuildings3D() {
             const chillerZ = -coreOffZ * 0.85;
 
             const chillerGeom = new THREE.BoxGeometry(chillerW, chillerH, chillerD);
-            const chillerMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.35 });
+            const chillerMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.3 });
             const chiller = new THREE.Mesh(chillerGeom, chillerMat);
             chiller.position.set(chillerX, roofTopY + chillerH / 2.0, chillerZ);
             bldgGroup.add(chiller);
 
             // Dual Cylindrical Cooling Fan Cowlings atop Chiller
             const fanGeom = new THREE.CylinderGeometry(0.55, 0.55, 0.35, 12);
-            const fanMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.25 });
+            const fanMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.85, roughness: 0.2 });
             const fan1 = new THREE.Mesh(fanGeom, fanMat);
             fan1.position.set(chillerX - 0.7, roofTopY + chillerH + 0.18, chillerZ);
             bldgGroup.add(fan1);
@@ -1876,7 +2233,7 @@ function buildBuildings3D() {
             if (p.height_m >= 75.0 && w3 >= 6.0) {
                 const padRadius = Math.min(w3 * 0.40, 6.5);
                 const padGeom = new THREE.CylinderGeometry(padRadius, padRadius, 0.28, 24);
-                const padSideMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+                const padSideMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
                 const padMats = [padSideMat, helipadMat, padSideMat];
                 const pad = new THREE.Mesh(padGeom, padMats);
                 pad.position.set(0, roofTopY + 0.14, 0);
@@ -1884,7 +2241,7 @@ function buildBuildings3D() {
 
                 // Perimeter Safety Net Cantilever Lip Ring
                 const lipGeom = new THREE.CylinderGeometry(padRadius * 1.08, padRadius * 1.08, 0.08, 24);
-                const lipMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.4 });
+                const lipMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.7, roughness: 0.4 });
                 const lip = new THREE.Mesh(lipGeom, lipMat);
                 lip.position.set(0, roofTopY + 0.06, 0);
                 bldgGroup.add(lip);
@@ -1922,7 +2279,7 @@ function buildBuildings3D() {
             const entryW = Math.min(bw * 0.35, 6.0);
             const entryD = 1.8;
             const entryGeom = new THREE.BoxGeometry(entryW, 0.25, entryD);
-            const entryMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
+            const entryMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 });
             const entry = new THREE.Mesh(entryGeom, entryMat);
             entry.position.set(0, groundY + 2.4, bd / 2.0 + entryD / 2.0 - 0.2);
             bldgGroup.add(entry);
@@ -1944,14 +2301,14 @@ function buildBuildings3D() {
             const tankRadius = Math.max(0.8, Math.min(1.4, bw * 0.18));
             const tankH = 2.2;
             const tankGeom = new THREE.CylinderGeometry(tankRadius, tankRadius, tankH, 12);
-            const tankMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+            const tankMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.7 });
             const tank = new THREE.Mesh(tankGeom, tankMat);
             tank.position.set(-bw * 0.25, roofTopY + 1.2 + tankH / 2.0, bd * 0.2);
             bldgGroup.add(tank);
 
             // 4-Legged Structural Steel Truss Stilt Support
             const legGeom = new THREE.CylinderGeometry(0.06, 0.06, 1.2, 6);
-            const legMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 });
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8, roughness: 0.3 });
             const legOffsets = [
                 [-tankRadius * 0.65, -tankRadius * 0.65],
                 [tankRadius * 0.65, -tankRadius * 0.65],
@@ -1966,14 +2323,14 @@ function buildBuildings3D() {
 
             // Conical Roof Cap on Tank
             const capGeom = new THREE.ConeGeometry(tankRadius * 1.1, 0.9, 12);
-            const capMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.6 });
+            const capMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.6 });
             const cap = new THREE.Mesh(capGeom, capMat);
             cap.position.set(-bw * 0.25, roofTopY + 1.2 + tankH + 0.45, bd * 0.2);
             bldgGroup.add(cap);
 
             // Rooftop AC Compressor Units
             const acGeom = new THREE.BoxGeometry(1.2, 0.9, 1.1);
-            const acMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.6, roughness: 0.4 });
+            const acMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.7, roughness: 0.35 });
             const ac1 = new THREE.Mesh(acGeom, acMat);
             ac1.position.set(-bw * 0.2, roofTopY + 0.45, -bd * 0.2);
             bldgGroup.add(ac1);
@@ -1992,7 +2349,7 @@ function buildBuildings3D() {
 
             // Rooftop Industrial Ventilation Monitor / Exhaust Ridge
             const ventGeom = new THREE.BoxGeometry(bw * 0.7, 1.3, bd * 0.25);
-            const ventMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.4 });
+            const ventMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.6, roughness: 0.4 });
             const vent = new THREE.Mesh(ventGeom, ventMat);
             vent.position.set(0, roofTopY + 0.65, 0);
             bldgGroup.add(vent);
@@ -2001,13 +2358,13 @@ function buildBuildings3D() {
             const bayW = Math.min(bw * 0.35, 6.0);
             const bayH = 3.2;
             const bayGeom = new THREE.BoxGeometry(bayW, bayH, 0.3);
-            const bayMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 });
+            const bayMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.5, roughness: 0.3 });
             const bay = new THREE.Mesh(bayGeom, bayMat);
             bay.position.set(0, groundY + bayH / 2.0, bd / 2.0 + 0.1);
             bldgGroup.add(bay);
         }
 
-        bldgGroup.userData = { id: p.id, district: p.district, zoning: p.zoning, height: p.height_m, baseEmissive: selectedTheme.baseEmissive || 0.25 };
+        bldgGroup.userData = { id: p.id, district: p.district, zoning: p.zoning, height: p.height_m, baseEmissive: selectedTheme.baseEmissive || 1.0 };
         state.buildingsGroup.add(bldgGroup);
     });
 
@@ -2208,14 +2565,25 @@ function buildStreetFurniture3D() {
     state.streetFurnitureGroup = new THREE.Group();
     state.streetlights = [];
     state.streetlightLocalLights = [];
+    state.streetlightPools = [];
 
     // Shared Materials for High-Performance Rendering
     state.streetlightLensMat = new THREE.MeshStandardMaterial({
         color: 0xfffbeb,
-        emissive: 0xfffbeb,
+        emissive: 0xffedd5,
         emissiveIntensity: 0.0,
         roughness: 0.15,
         metalness: 0.2
+    });
+
+    const poolTex = createStreetlightPoolTexture();
+    state.streetlightPoolMat = new THREE.MeshBasicMaterial({
+        map: poolTex,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
     });
 
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.35 });
@@ -2323,6 +2691,13 @@ function buildStreetFurniture3D() {
             lensMesh.rotation.x = 0.12;
             lightGroup.add(lensMesh);
             state.streetlights.push(lensMesh);
+
+            // Circular warm street light pool projected on the roadway surface
+            const poolMesh = new THREE.Mesh(new THREE.PlaneGeometry(10.0, 10.0), state.streetlightPoolMat);
+            poolMesh.rotation.x = -Math.PI / 2;
+            poolMesh.position.set(0, 0.04, 1.35);
+            lightGroup.add(poolMesh);
+            state.streetlightPools.push(poolMesh);
 
             // Localized warm night pool light on every 4th streetlight
             lightCounter++;
@@ -2628,7 +3003,40 @@ function spawnTrafficFleet(count = 180) {
     state.scene.add(state.trafficGroup);
 }
 
+function ensureVehicleLightingMaterials() {
+    if (!state.headlightLensMat) {
+        state.headlightLensMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            emissive: 0xfffbeb,
+            emissiveIntensity: 0.1,
+            roughness: 0.15,
+            metalness: 0.2
+        });
+    }
+    if (!state.taillightLensMat) {
+        state.taillightLensMat = new THREE.MeshStandardMaterial({
+            color: 0xef4444,
+            emissive: 0xef4444,
+            emissiveIntensity: 0.2,
+            roughness: 0.2,
+            metalness: 0.2
+        });
+    }
+    if (!state.headlightBeamMat) {
+        const beamTex = createHeadlightBeamTexture();
+        state.headlightBeamMat = new THREE.MeshBasicMaterial({
+            map: beamTex,
+            transparent: true,
+            opacity: 0.0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+    }
+}
+
 function createAmbulanceMesh() {
+    ensureVehicleLightingMaterials();
     const group = new THREE.Group();
 
     // 1. Lower Chassis & Wheels frame
@@ -2703,16 +3111,22 @@ function createAmbulanceMesh() {
 
     // 7. Headlights & Taillights
     const lightGeom = new THREE.BoxGeometry(0.22, 0.12, 0.08);
-    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffedd5 });
-    const hl1 = new THREE.Mesh(lightGeom, hlMat);
+    const hl1 = new THREE.Mesh(lightGeom, state.headlightLensMat);
     hl1.position.set(-0.46, 0.45, 1.36);
     const hl2 = hl1.clone();
     hl2.position.set(0.46, 0.45, 1.36);
     group.add(hl1);
     group.add(hl2);
 
-    const brakeMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-    const bl1 = new THREE.Mesh(lightGeom, brakeMat);
+    // Forward Headlight Ground Beam Projection
+    const beamGeom = new THREE.PlaneGeometry(3.6, 12.0);
+    const beamMesh = new THREE.Mesh(beamGeom, state.headlightBeamMat);
+    beamMesh.rotation.x = -Math.PI / 2;
+    beamMesh.position.set(0, 0.06, 7.2);
+    group.add(beamMesh);
+
+    const blMat = state.taillightLensMat.clone();
+    const bl1 = new THREE.Mesh(lightGeom, blMat);
     bl1.position.set(-0.48, 0.45, -1.37);
     const bl2 = bl1.clone();
     bl2.position.set(0.48, 0.45, -1.37);
@@ -2768,6 +3182,7 @@ function createAmbulanceMesh() {
 }
 
 function createFireTruckMesh() {
+    ensureVehicleLightingMaterials();
     const group = new THREE.Group();
 
     // 1. Heavy Chassis & Bumper Frame
@@ -2836,16 +3251,22 @@ function createFireTruckMesh() {
 
     // 8. Heavy Dual Headlights & Tail Lights
     const lightGeom = new THREE.BoxGeometry(0.24, 0.14, 0.08);
-    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const hl1 = new THREE.Mesh(lightGeom, hlMat);
+    const hl1 = new THREE.Mesh(lightGeom, state.headlightLensMat);
     hl1.position.set(-0.52, 0.48, 1.88);
     const hl2 = hl1.clone();
     hl2.position.set(0.52, 0.48, 1.88);
     group.add(hl1);
     group.add(hl2);
 
-    const brakeMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-    const bl1 = new THREE.Mesh(lightGeom, brakeMat);
+    // Forward Headlight Ground Beam Projection
+    const beamGeom = new THREE.PlaneGeometry(4.0, 13.0);
+    const beamMesh = new THREE.Mesh(beamGeom, state.headlightBeamMat);
+    beamMesh.rotation.x = -Math.PI / 2;
+    beamMesh.position.set(0, 0.06, 8.2);
+    group.add(beamMesh);
+
+    const blMat = state.taillightLensMat.clone();
+    const bl1 = new THREE.Mesh(lightGeom, blMat);
     bl1.position.set(-0.52, 0.48, -1.78);
     const bl2 = bl1.clone();
     bl2.position.set(0.52, 0.48, -1.78);
@@ -2894,6 +3315,7 @@ function createFireTruckMesh() {
 }
 
 function createCarMesh(colorHex) {
+    ensureVehicleLightingMaterials();
     const group = new THREE.Group();
 
     // Body (width: 1.25, height: 0.55, length: 2.6 - fits neatly into designated lane)
@@ -2913,17 +3335,23 @@ function createCarMesh(colorHex) {
 
     // Headlights
     const lightGeom = new THREE.BoxGeometry(0.24, 0.12, 0.08);
-    const lightMat = new THREE.MeshBasicMaterial({ color: 0xffedd5 });
-    const hl1 = new THREE.Mesh(lightGeom, lightMat);
+    const hl1 = new THREE.Mesh(lightGeom, state.headlightLensMat);
     hl1.position.set(-0.42, 0.45, 1.3);
     const hl2 = hl1.clone();
     hl2.position.set(0.42, 0.45, 1.3);
     group.add(hl1);
     group.add(hl2);
 
+    // Forward Headlight Ground Beam Projection
+    const beamGeom = new THREE.PlaneGeometry(3.4, 11.0);
+    const beamMesh = new THREE.Mesh(beamGeom, state.headlightBeamMat);
+    beamMesh.rotation.x = -Math.PI / 2;
+    beamMesh.position.set(0, 0.06, 6.8);
+    group.add(beamMesh);
+
     // Brake / Tail lights
-    const brakeMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-    const bl1 = new THREE.Mesh(lightGeom, brakeMat);
+    const blMat = state.taillightLensMat.clone();
+    const bl1 = new THREE.Mesh(lightGeom, blMat);
     bl1.position.set(-0.42, 0.45, -1.3);
     const bl2 = bl1.clone();
     bl2.position.set(0.42, 0.45, -1.3);
@@ -3657,15 +4085,15 @@ function applyAtmosphereUpdate(dt) {
 
     if (state.weatherMode === "night" || wf < -0.5) {
         // Midnight City Twin Atmosphere
-        fogCol = new THREE.Color(0x050a18);
-        fogDens = 0.0012;
-        sunCol = new THREE.Color(0x38bdf8); // Cool moonlight
-        sunInt = 0.35;
-        hemiSky = new THREE.Color(0x1e1b4b);
-        hemiGnd = new THREE.Color(0x020617);
-        hemiInt = 0.25;
+        fogCol = new THREE.Color(0x060913);
+        fogDens = 0.0008;
+        sunCol = new THREE.Color(0x93c5fd); // Soft cool moonlight
+        sunInt = 0.55;
+        hemiSky = new THREE.Color(0x334155); // Ambient night sky glow from city
+        hemiGnd = new THREE.Color(0x1e293b); // Ground bounce
+        hemiInt = 0.70; // Ensures buildings have visible form and depth, not black voids
         rainOpac = (parseFloat(sliderRain.value) > 5) ? 0.55 : 0.0;
-        emissiveScale = 0.35;
+        emissiveScale = 1.85; // Brilliant glowing windows across skyscrapers & homes
 
         if (state.sunMesh) state.sunMesh.visible = false;
     } else {
@@ -3688,14 +4116,14 @@ function applyAtmosphereUpdate(dt) {
         fogDens = THREE.MathUtils.lerp(0.00035, 0.0016, clampedWf);
 
         sunCol = daySun.clone().lerp(stormSun, clampedWf);
-        sunInt = THREE.MathUtils.lerp(1.95, 0.90, clampedWf);
+        sunInt = THREE.MathUtils.lerp(2.0, 0.90, clampedWf);
 
         hemiSky = dayHemiSky.clone().lerp(stormHemiSky, clampedWf);
         hemiGnd = dayHemiGnd.clone().lerp(stormHemiGnd, clampedWf);
-        hemiInt = THREE.MathUtils.lerp(0.85, 0.55, clampedWf);
+        hemiInt = THREE.MathUtils.lerp(0.90, 0.60, clampedWf);
 
         rainOpac = (clampedWf < 0.04) ? 0.0 : THREE.MathUtils.lerp(0.12, 0.50, (clampedWf - 0.04) / 0.96);
-        emissiveScale = THREE.MathUtils.lerp(0.05, 0.25, clampedWf);
+        emissiveScale = THREE.MathUtils.lerp(0.08, 0.95, clampedWf);
 
         if (state.sunMesh) {
             state.sunMesh.visible = (clampedWf < 0.75);
@@ -3774,22 +4202,64 @@ function applyAtmosphereUpdate(dt) {
     }
 
     // 7. Streetlight LED Luminaire Glow & Localized Night Light Pools
+    const isNight = (state.weatherMode === "night" || wf < -0.5);
+
     if (state.streetlightLensMat) {
-        const isNight = (state.weatherMode === "night" || wf < -0.5);
         let streetInt = 0.0;
         if (isNight) {
-            streetInt = 0.95;
+            streetInt = 3.2;
         } else if (wf > 0.35) {
-            streetInt = Math.min(0.90, (wf - 0.35) * 2.2);
+            streetInt = Math.min(2.8, (wf - 0.35) * 3.5);
         }
         state.streetlightLensMat.emissiveIntensity = streetInt;
+    }
 
-        if (state.streetlightLocalLights && state.streetlightLocalLights.length > 0) {
-            const lightVal = streetInt * 1.35;
-            for (let i = 0; i < state.streetlightLocalLights.length; i++) {
-                state.streetlightLocalLights[i].intensity = lightVal;
-            }
+    if (state.streetlightPoolMat) {
+        let poolOpac = 0.0;
+        if (isNight) {
+            poolOpac = 0.85;
+        } else if (wf > 0.35) {
+            poolOpac = Math.min(0.65, (wf - 0.35) * 1.0);
         }
+        state.streetlightPoolMat.opacity = poolOpac;
+    }
+
+    if (state.streetlightLocalLights && state.streetlightLocalLights.length > 0) {
+        const lightVal = isNight ? 2.8 : (wf > 0.35 ? Math.min(2.2, (wf - 0.35) * 3.0) : 0.0);
+        for (let i = 0; i < state.streetlightLocalLights.length; i++) {
+            state.streetlightLocalLights[i].intensity = lightVal;
+        }
+    }
+
+    // 8. Vehicle Headlights & Projected Road Illumination Beams
+    if (state.headlightLensMat) {
+        let hlInt = 0.1;
+        if (isNight) {
+            hlInt = 3.5;
+        } else if (wf > 0.35) {
+            hlInt = Math.min(3.0, 0.4 + (wf - 0.35) * 3.0);
+        }
+        state.headlightLensMat.emissiveIntensity = hlInt;
+    }
+
+    if (state.headlightBeamMat) {
+        let beamOpac = 0.0;
+        if (isNight) {
+            beamOpac = 0.75;
+        } else if (wf > 0.35) {
+            beamOpac = Math.min(0.50, (wf - 0.35) * 0.8);
+        }
+        state.headlightBeamMat.opacity = beamOpac;
+    }
+
+    if (state.taillightLensMat) {
+        let tlInt = 0.2;
+        if (isNight) {
+            tlInt = 2.8;
+        } else if (wf > 0.35) {
+            tlInt = Math.min(2.2, 0.4 + (wf - 0.35) * 2.5);
+        }
+        state.taillightLensMat.emissiveIntensity = tlInt;
     }
 }
 
