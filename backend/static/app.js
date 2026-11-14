@@ -691,6 +691,7 @@ async function loadCityData() {
     // 1. Terrain DEM
     const terrainRes = await fetch("/api/city/terrain");
     state.terrain = await terrainRes.json();
+    removeCanalFromTerrain();
 
     // 2. Roads
     const roadsRes = await fetch("/api/city/roads");
@@ -712,6 +713,62 @@ async function loadCityData() {
     } catch (e) {
         console.warn("Footprints not loaded:", e);
     }
+}
+
+// -------------------------------------------------------------------------
+// CANAL REMOVAL: Inpaint & Smooth Terrain Across The Former River Channel
+// -------------------------------------------------------------------------
+function removeCanalFromTerrain() {
+    if (!state.terrain || !state.terrain.river_mask) return;
+
+    state.originalRiverMask = state.terrain.river_mask.map(row => [...row]);
+    const rows = state.terrain.rows;
+    const cols = state.terrain.cols;
+    const grid = state.terrain.elevation_grid;
+
+    // Create a 4-cell dilation corridor around the river cut to capture the channel and steep banks
+    const inChannelOrBank = Array.from({ length: rows }, () => new Uint8Array(cols));
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            if (state.originalRiverMask[r][c]) {
+                for (let dr = -4; dr <= 4; dr++) {
+                    for (let dc = -4; dc <= 4; dc++) {
+                        const nr = r + dr;
+                        const nc = c + dc;
+                        if (nr >= 1 && nr < rows - 1 && nc >= 1 && nc < cols - 1) {
+                            if (dr * dr + dc * dc <= 18) {
+                                inChannelOrBank[nr][nc] = 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Laplace relaxation: seamlessly inpaint elevation across the canal to match surrounding city streets
+    for (let iter = 0; iter < 75; iter++) {
+        for (let r = 1; r < rows - 1; r++) {
+            for (let c = 1; c < cols - 1; c++) {
+                if (inChannelOrBank[r][c]) {
+                    grid[r][c] = (grid[r - 1][c] + grid[r + 1][c] + grid[r][c - 1] + grid[r][c + 1]) * 0.25;
+                }
+            }
+        }
+    }
+
+    // Recompute global min/max elevation bounds & clear river mask
+    let minE = Infinity, maxE = -Infinity;
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const v = grid[r][c];
+            if (v < minE) minE = v;
+            if (v > maxE) maxE = v;
+            state.terrain.river_mask[r][c] = false; // Canal completely removed
+        }
+    }
+    state.terrain.min_elevation_m = minE;
+    state.terrain.max_elevation_m = maxE;
 }
 
 
@@ -859,12 +916,6 @@ function buildRoadNetwork3D() {
         let y1 = getTerrainElevation(coords[0][0], coords[0][1]) + 0.38;
         let y2 = getTerrainElevation(coords[1][0], coords[1][1]) + 0.38;
 
-        if (isBridge) {
-            const bridgeDeckY = Math.max(y1, y2) + 1.8;
-            y1 = bridgeDeckY;
-            y2 = bridgeDeckY;
-        }
-
         const startVec = new THREE.Vector3(p1.x, y1, p1.z);
         const endVec = new THREE.Vector3(p2.x, y2, p2.z);
 
@@ -886,7 +937,7 @@ function buildRoadNetwork3D() {
             speedLimit: p.free_flow_speed_kmh || 40.0,
             roadClass: p.road_class,
             width: width,
-            isBridge: isBridge,
+            isBridge: false,
             isClosed: false,
             waterDepth: 0.0
         };
@@ -895,7 +946,7 @@ function buildRoadNetwork3D() {
         if (!builtStreets.has(streetKey)) {
             builtStreets.add(streetKey);
 
-            const roadGroup = createRoadRibbon(coords[0], coords[1], p1, p2, width, isHighway ? 0x94a3b8 : 0x334155, isBridge);
+            const roadGroup = createRoadRibbon(coords[0], coords[1], p1, p2, width, isHighway ? 0x94a3b8 : 0x334155, false);
             roadGroup.userData = { 
                 streetKey: streetKey,
                 edgeIds: [p.edge_id], 
@@ -906,12 +957,7 @@ function buildRoadNetwork3D() {
             };
             state.roadLinesGroup.add(roadGroup);
 
-            if (isBridge) {
-                const bridgePillars = createBridgeSupportPillars(startVec, endVec);
-                state.roadLinesGroup.add(bridgePillars);
-            }
-
-            const barrierPair = createRoadBarricadePair(coords[0], coords[1], p1, p2, width, isBridge);
+            const barrierPair = createRoadBarricadePair(coords[0], coords[1], p1, p2, width, false);
             barrierPair.userData = { streetKey: streetKey, edgeIds: [p.edge_id] };
             barrierPair.visible = false;
             state.barriersGroup.add(barrierPair);
@@ -1947,16 +1993,21 @@ function update3DWaterSurface(depthGrid) {
         const c = i % cols;
         const r = Math.floor(i / cols);
 
-        const h = depthGrid[r][c] || 0.0;
+        let h = depthGrid[r][c] || 0.0;
+        // Canal completely removed: zero out artificial channel water depth
+        if (state.originalRiverMask && state.originalRiverMask[r][c]) {
+            h = 0.0;
+        }
+
         const elev = state.terrain.elevation_grid[r][c];
         const baseElevY = (elev - minElev) * 0.55;
 
-        if (h > 0.03) {
-            // Water physically rises above terrain surface (smooth natural lake/river flood surface)
-            const waterHeight = Math.max(0.08, h * 0.75);
+        if (h > 0.04) {
+            // Water physically rises above terrain surface only where true surface flooding ponds
+            const waterHeight = Math.max(0.06, h * 0.75);
             pos.setY(i, baseElevY + waterHeight);
         } else {
-            // Dry ground: water surface sits safely 0.15m beneath terrain (strictly no 100m cliff walls or bottomless trenches)
+            // Dry ground: water surface sits safely 0.15m beneath terrain (strictly no canal or cliffs)
             pos.setY(i, baseElevY - 0.15);
         }
     }
@@ -1984,13 +2035,12 @@ function update3DRoadConditions(depthGrid) {
             const wy = primaryEdge.startWorld.y + (primaryEdge.endWorld.y - primaryEdge.startWorld.y) * frac;
             const c = Math.floor(npClamp(wx / 50.0, 0, 119));
             const r = Math.floor(npClamp((6000.0 - wy) / 50.0, 0, 119));
-            const d = depthGrid[r][c] || 0.0;
+            let d = depthGrid[r][c] || 0.0;
+            // Canal removed: zero out artificial river depth so crossing streets are normal dry streets
+            if (state.originalRiverMask && state.originalRiverMask[r][c]) {
+                d = 0.0;
+            }
             if (d > maxWater) maxWater = d;
-        }
-
-        // Bridge handling: bridge is elevated above river
-        if (primaryEdge.isBridge) {
-            maxWater = Math.max(0.0, maxWater - 2.5);
         }
 
         // Update BOTH directed edges in state.roadGraph
