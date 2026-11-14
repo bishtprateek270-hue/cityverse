@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CityVerse | Geographic Urban Digital Twin</title>
-    <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+    <title>CityVerse | Realistic 3D Urban Simulation Twin</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -139,47 +138,51 @@
             </div>
         </aside>
 
-        <!-- CENTER PANEL: Geographical City Map Viewport -->
+        <!-- CENTER PANEL: 3D City Simulation Viewport -->
         <section class="panel center-panel">
-            <!-- Geographical Map Header Toolbar -->
+            <!-- 3D Header Toolbar -->
             <div class="map-toolbar">
                 <div class="map-title-badge">
-                    <span class="icon">🗺️</span> GEOGRAPHICAL URBAN TWIN
+                    <span class="icon">🏙️</span> 3D URBAN DIGITAL TWIN
                 </div>
                 
-                <div class="basemap-selector">
-                    <span class="bm-label">BASEMAP:</span>
-                    <button id="bmDark" class="bm-btn active" title="Esri Dark Gray Canvas">Dark GIS</button>
-                    <button id="bmSatellite" class="bm-btn" title="Esri High-Res World Imagery">Satellite</button>
-                    <button id="bmStreet" class="bm-btn" title="Esri World Street Map">Street Map</button>
-                    <button id="bmOsm" class="bm-btn" title="OpenStreetMap">OSM</button>
-                    <button id="btnFitCity" class="bm-btn btn-fit" title="Zoom & Fit MetroVerdia Domain">🎯 Fit City</button>
+                <div class="camera-hud">
+                    <span class="bm-label">CAMERA:</span>
+                    <button id="camOverview" class="cam-btn active" title="Aerial 45° Overview">🌐 Aerial</button>
+                    <button id="camDowntown" class="cam-btn" title="Downtown Financial District">🏙️ Downtown</button>
+                    <button id="camHospital" class="cam-btn" title="Level-1 Trauma Center">🏥 Trauma Hosp</button>
+                    <button id="camRiver" class="cam-btn" title="South Basin River Confluence">🌊 Basin Outfall</button>
+                    <button id="camDrone" class="cam-btn" title="Toggle Auto Drone Orbit">🎥 Drone Orbit</button>
                 </div>
 
                 <div class="layer-toggles">
-                    <label><input type="checkbox" id="chkWater" checked> Flood Depth</label>
-                    <label><input type="checkbox" id="chkRoads" checked> Road Network</label>
-                    <label><input type="checkbox" id="chkRiver" checked> River System</label>
-                    <label><input type="checkbox" id="chkFootprints" checked> Buildings</label>
-                    <label><input type="checkbox" id="chkBlocks" checked> Zoning</label>
-                    <label><input type="checkbox" id="chkContours" checked> Topo Contours</label>
+                    <label><input type="checkbox" id="chkWater" checked> 3D Flood Inundation</label>
+                    <label><input type="checkbox" id="chkTraffic" checked> Moving Traffic (Cars)</label>
+                    <label><input type="checkbox" id="chkRoads" checked> Road Passability</label>
+                    <label><input type="checkbox" id="chkBuildings" checked> 3D Buildings</label>
                     <label><input type="checkbox" id="chkFacilities" checked> Critical Facilities</label>
+                    <label><input type="checkbox" id="chkRain" checked> Storm FX</label>
                 </div>
             </div>
 
-            <div class="map-container" id="mapContainer">
-                <div id="cityMap"></div>
+            <div class="viewport-3d-container" id="viewportContainer">
+                <div id="city3dViewport"></div>
+
+                <!-- 3D Navigation Hint -->
+                <div class="camera-controls-hint">
+                    <span>Left Drag: Rotate 3D | Right Drag: Pan | Scroll: Zoom</span>
+                </div>
 
                 <!-- Scientific Hydrologic Map Legend -->
                 <div class="canvas-overlay map-legend">
-                    <div class="legend-header">HYDROLOGIC & ROAD ATLAS</div>
+                    <div class="legend-header">3D HYDROLOGIC & ROAD ATLAS</div>
                     <div class="legend-item"><span class="legend-color color-water-shallow"></span> Shallow Ponding (0.05m - 0.15m)</div>
                     <div class="legend-item"><span class="legend-color color-water-moderate"></span> Passenger Road Stall (0.15m - 0.30m)</div>
-                    <div class="legend-item"><span class="legend-color color-water-deep"></span> Emergency Cutoff (&gt;0.30m)</div>
-                    <div class="legend-item"><span class="legend-color color-river"></span> River Channel & Bayou Basin</div>
-                    <div class="legend-item"><span class="legend-color color-road-open"></span> Open Road Segment</div>
-                    <div class="legend-item"><span class="legend-color color-road-slow"></span> Speed Degraded (Pregnolato)</div>
-                    <div class="legend-item"><span class="legend-color color-road-closed"></span> Closed / Impassable Road</div>
+                    <div class="legend-item"><span class="legend-color color-water-deep"></span> Emergency Cutoff (&gt;0.30m, Barricaded)</div>
+                    <div class="legend-item"><span class="legend-color color-river"></span> Central River Channel & Bayou</div>
+                    <div class="legend-item"><span class="legend-color color-road-open"></span> Open Road (Active Traffic)</div>
+                    <div class="legend-item"><span class="legend-color color-road-slow"></span> Speed Degraded (Braking)</div>
+                    <div class="legend-item"><span class="legend-color color-road-closed"></span> Closed Road (Hazard Barriers)</div>
                     <div class="legend-item"><span class="legend-color color-facility-hosp"></span> Level-1 Trauma Hospital</div>
                     <div class="legend-item"><span class="legend-color color-facility-sub"></span> Electrical Substation (138kV)</div>
                     <div class="legend-item"><span class="legend-color color-facility-pump"></span> Stormwater Lift Pump</div>
@@ -187,7 +190,7 @@
 
                 <!-- Hover Location Inspector -->
                 <div id="inspectorCard" class="canvas-overlay inspector-card hidden">
-                    <div class="inspector-header">GEOGRAPHIC LOCATION INSPECTOR</div>
+                    <div class="inspector-header">LOCATION &amp; TRAFFIC INSPECTOR</div>
                     <div id="inspectorContent" class="inspector-body">
                         <!-- Populated on mousemove -->
                     </div>
@@ -311,7 +314,8 @@
         </aside>
     </main>
 
-    <script src="vendor/leaflet/leaflet.js"></script>
+    <script src="vendor/three/three.min.js"></script>
+    <script src="vendor/three/OrbitControls.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
