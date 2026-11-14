@@ -2517,8 +2517,8 @@ function update3DWaterSurface(depthGrid) {
         const baseElevY = (elev - minElev) * 0.55;
 
         if (h > 0.04) {
-            // Water physically rises above terrain surface only where true surface flooding ponds
-            const waterHeight = Math.max(0.06, h * 0.75);
+            // Water physically rises above terrain surface only where true surface flooding ponds (clamped to realistic urban basin depth)
+            const waterHeight = Math.min(5.5, Math.max(0.06, h * 0.75));
             pos.setY(i, baseElevY + waterHeight);
         } else {
             // Dry ground: water surface sits safely 0.15m beneath terrain (strictly no canal or cliffs)
@@ -3012,7 +3012,8 @@ function setupEventListeners() {
         onSliderLiveChange();
     });
     sliderDrain.addEventListener("input", (e) => { 
-        valDrain.innerText = `${e.target.value}%`; 
+        const cap = parseInt(e.target.value, 10);
+        valDrain.innerText = `${cap}% (${100 - cap}% Blocked)`; 
         onSliderLiveChange();
     });
     sliderPump1.addEventListener("input", (e) => { 
