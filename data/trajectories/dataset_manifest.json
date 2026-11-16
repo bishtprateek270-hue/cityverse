@@ -1,28 +1,51 @@
 {
   "splits": {
     "train": {
-      "count": 6,
+      "count": 25,
       "files": [
         "data\\trajectories\\train\\train_run_0000.npz",
         "data\\trajectories\\train\\train_run_0001.npz",
         "data\\trajectories\\train\\train_run_0002.npz",
         "data\\trajectories\\train\\train_run_0003.npz",
         "data\\trajectories\\train\\train_run_0004.npz",
-        "data\\trajectories\\train\\train_run_0005.npz"
+        "data\\trajectories\\train\\train_run_0005.npz",
+        "data\\trajectories\\train\\train_run_0006.npz",
+        "data\\trajectories\\train\\train_run_0007.npz",
+        "data\\trajectories\\train\\train_run_0008.npz",
+        "data\\trajectories\\train\\train_run_0009.npz",
+        "data\\trajectories\\train\\train_run_0010.npz",
+        "data\\trajectories\\train\\train_run_0011.npz",
+        "data\\trajectories\\train\\train_run_0012.npz",
+        "data\\trajectories\\train\\train_run_0013.npz",
+        "data\\trajectories\\train\\train_run_0014.npz",
+        "data\\trajectories\\train\\train_run_0015.npz",
+        "data\\trajectories\\train\\train_run_0016.npz",
+        "data\\trajectories\\train\\train_run_0017.npz",
+        "data\\trajectories\\train\\train_run_0018.npz",
+        "data\\trajectories\\train\\train_run_0019.npz",
+        "data\\trajectories\\train\\train_run_0020.npz",
+        "data\\trajectories\\train\\train_run_0021.npz",
+        "data\\trajectories\\train\\train_run_0022.npz",
+        "data\\trajectories\\train\\train_run_0023.npz",
+        "data\\trajectories\\train\\train_run_0024.npz"
       ]
     },
     "val": {
-      "count": 2,
+      "count": 5,
       "files": [
         "data\\trajectories\\val\\val_run_0000.npz",
-        "data\\trajectories\\val\\val_run_0001.npz"
+        "data\\trajectories\\val\\val_run_0001.npz",
+        "data\\trajectories\\val\\val_run_0002.npz",
+        "data\\trajectories\\val\\val_run_0003.npz",
+        "data\\trajectories\\val\\val_run_0004.npz"
       ]
     },
     "test": {
-      "count": 2,
+      "count": 3,
       "files": [
         "data\\trajectories\\test\\test_run_0000.npz",
-        "data\\trajectories\\test\\test_run_0001.npz"
+        "data\\trajectories\\test\\test_run_0001.npz",
+        "data\\trajectories\\test\\test_run_0002.npz"
       ]
     }
   }

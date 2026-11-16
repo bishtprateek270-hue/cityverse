@@ -32,8 +32,8 @@ def main():
     
     print(f"Loaded {len(train_dataset)} training transitions, {len(val_dataset)} validation transitions.")
     
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False)
     
     # 2. Model
     model = UrbanWorldModel(
@@ -44,25 +44,39 @@ def main():
         num_road_edges=464,
     )
     
-    # 3. Trainer
+    # 3. Trainer (Runs on CPU for rock-solid stability and zero-driver issues)
     trainer = WorldModelTrainer(
         model=model,
         lr=1e-3,
+        weight_decay=1e-4,
+        device="cpu",
         checkpoint_dir="models/checkpoints",
     )
     
-    # 4. Train 25 epochs for accurate hydrological convergence
-    print("Training model across 25 epochs...")
-    history = trainer.fit(train_loader, val_loader, epochs=25, save_best=True)
+    # 4. Train 30 epochs with Cosine Annealing learning rate schedule
+    epochs = 30
+    print(f"Training model across {epochs} epochs on expanded dataset ({len(train_dataset)} transitions)...")
+    history = trainer.fit(train_loader, val_loader, epochs=epochs, save_best=True)
     
+    print("\n--- Training Convergence Summary ---")
     for h in history:
-        print(f"Epoch {h['epoch']}: Train Loss = {h['train_loss']:.4f} (MAE: {h['train_mae']:.4f}) | Val Loss = {h['val_loss']:.4f} (MAE: {h['val_mae']:.4f}) | Time = {h['elapsed_s']:.1f}s")
+        print(f"Epoch {h['epoch']:02d}/{epochs}: Train Loss={h['train_loss']:.4f} (MAE: {h['train_mae']:.4f}, IoU: {h['train_iou']:.3f}) | Val Loss={h['val_loss']:.4f} (MAE: {h['val_mae']:.4f}, IoU: {h['val_iou']:.3f}) | LR={h['lr']:.2e} | Time={h['elapsed_s']:.1f}s")
         
-    # 5. Evaluate Latency
-    evaluator = WorldModelEvaluator(model)
+    # 5. Evaluate Latency & Best Checkpoint Accuracy
+    trainer.load_checkpoint("models/checkpoints/world_model_best.pt")
+    final_val = trainer.validate(val_loader)
+    evaluator = WorldModelEvaluator(trainer.model)
     bench = evaluator.benchmark_inference_latency(n_trials=30)
-    print(f"\nFinal Inference Latency: {bench['mean_latency_ms']:.2f} ms per step (Target <30ms: {bench['meets_target_30ms']})")
-    print(f"Saved trained checkpoint to models/checkpoints/world_model_best.pt")
+    
+    print("\n========================================================")
+    print("WORLD MODEL RETRAINING COMPLETE")
+    print("========================================================")
+    print(f"  Best Val Loss: {final_val['val_loss']:.4f}")
+    print(f"  Best Val MAE:  {final_val['val_mae']:.4f} m ({final_val['val_mae']*100:.2f} cm depth error)")
+    print(f"  Best Val IoU:  {final_val['val_iou']:.4f} ({final_val['val_iou']*100:.1f}% Critical Success Index)")
+    print(f"  Inference Latency: {bench['mean_latency_ms']:.2f} ms per step (Target <30ms: {bench['meets_target_30ms']})")
+    print(f"  Checkpoint saved: models/checkpoints/world_model_best.pt")
+    print("========================================================")
 
 
 if __name__ == "__main__":

@@ -11,9 +11,9 @@ from cityverse_sim.environment.dataset_generator import DatasetGenerator
 def main():
     print("Initializing DatasetGenerator...")
     gen = DatasetGenerator()
-    # Sample a representative set of storm trajectories
-    spec = gen.generate_scenario_list(n_train=6, n_val=2, n_test=2, seed=42)
-    print("Generating simulation trajectories across train, val, and test splits...")
+    # Sample a diverse, comprehensive set of storm trajectories
+    spec = gen.generate_scenario_list(n_train=25, n_val=5, n_test=3, seed=42)
+    print("Generating expanded simulation trajectories across train (25), val (5), and test (3) splits...")
     manifest = gen.generate_and_save_all(scenario_spec=spec, dt_sim_s=60.0, record_interval_s=300.0)
     print("Dataset generation complete!")
     for split, info in manifest["splits"].items():

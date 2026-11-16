@@ -29,6 +29,7 @@ class WorldModelTrainer:
         weight_decay: float = 1e-4,
         device: Optional[str] = None,
         checkpoint_dir: str = "models/checkpoints",
+        loss_fn: Optional[PhysicsInformedFloodLoss] = None,
     ):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
@@ -36,7 +37,7 @@ class WorldModelTrainer:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
-        self.loss_fn = PhysicsInformedFloodLoss()
+        self.loss_fn = loss_fn or PhysicsInformedFloodLoss(weight_iou=2.5, weight_mass=3.0, weight_scalars=0.5)
         self.history: List[Dict[str, float]] = []
         self.best_val_loss = float("inf")
 
@@ -143,24 +144,31 @@ class WorldModelTrainer:
         epochs: int = 5,
         save_best: bool = True
     ) -> List[Dict[str, float]]:
-        """Executes full multi-epoch training loop."""
+        """Executes full multi-epoch training loop with Cosine Annealing learning rate schedule."""
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=epochs, eta_min=1e-5)
+        
         for epoch in range(1, epochs + 1):
             t0 = time.time()
             train_metrics = self.train_epoch(train_loader)
             val_metrics = self.validate(val_loader)
+            scheduler.step()
             elapsed = time.time() - t0
             
             combined = {
                 "epoch": epoch,
                 "elapsed_s": elapsed,
+                "lr": float(scheduler.get_last_lr()[0]),
                 **train_metrics,
                 **val_metrics,
             }
             self.history.append(combined)
             
+            print(f"Epoch {epoch:02d}/{epochs}: Train Loss={train_metrics['train_loss']:.4f} (MAE: {train_metrics['train_mae']:.4f}, IoU: {train_metrics['train_iou']:.3f}) | Val Loss={val_metrics['val_loss']:.4f} (MAE: {val_metrics['val_mae']:.4f}, IoU: {val_metrics['val_iou']:.3f}) | LR={combined['lr']:.2e} | Time={elapsed:.1f}s")
+            
             if save_best and val_metrics["val_loss"] < self.best_val_loss:
                 self.best_val_loss = val_metrics["val_loss"]
                 self.save_checkpoint(str(self.checkpoint_dir / "world_model_best.pt"))
+                print(f"  --> Saved new best model checkpoint! (Val Loss: {self.best_val_loss:.4f})")
                 
         return self.history
 
